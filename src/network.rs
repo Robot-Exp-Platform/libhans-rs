@@ -1,0 +1,8 @@
+// pub const PORT_IF: u16 = 10003;
+// pub const PORT_DATASHEET_JSON_1: u16 = 10004;
+// pub const PORT_DATASHEET_JSON_2: u16 = 10005;
+// pub const PORT_DATASHEET_JSON_3: u16 = 10006;
+// pub const PORT_DATASHEET_STRUCT_1: u16 = 10014;
+// pub const PORT_DATASHEET_STRUCT_2: u16 = 10015;
+// pub const PORT_DATASHEET_STRUCT_3: u16 = 10016;
+// pub const PORT_MODBUSTCP: u16 = 10502;
