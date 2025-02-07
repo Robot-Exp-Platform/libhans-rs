@@ -15,3 +15,6 @@ num-derive = "*"
 thiserror = "*"
 nalgebra = "*"
 bincode = "*"
+
+command_derive = { path = "src/command_derive" }
+robot_behavior = { path = "crates/robot_behavior" }
