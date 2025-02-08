@@ -9,7 +9,7 @@ use crate::{
 
 #[derive(Default)]
 pub struct HansRobot {
-    robot_impl: RobotImpl,
+    pub robot_impl: RobotImpl,
     is_moving: bool,
 }
 
@@ -71,7 +71,7 @@ impl RobotBehavior for HansRobot {
 
     fn init(&mut self) -> robot_behavior::RobotResult<()> {
         if self.robot_impl.is_connected() {
-            self.robot_impl.robot_power_on()?;
+            self.robot_impl.robot_power_on(())?;
             Ok(())
         } else {
             Err(RobotException::NetworkError(

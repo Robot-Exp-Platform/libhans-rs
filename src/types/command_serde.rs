@@ -1,8 +1,11 @@
+use std::default;
+
 use crate::robot_error::RobotError;
 
 pub trait CommandSerde: Sized {
     fn to_string(&self) -> String;
     fn from_str(data: &str) -> Result<Self, RobotError>;
+    fn try_default() -> Self;
 }
 
 impl CommandSerde for RobotError {
@@ -11,6 +14,9 @@ impl CommandSerde for RobotError {
     }
     fn from_str(data: &str) -> Result<Self, RobotError> {
         serde_json::from_str(data).map_err(|_| RobotError::DeserializeError)
+    }
+    fn try_default() -> Self {
+        Self::default()
     }
 }
 
@@ -21,6 +27,7 @@ impl CommandSerde for () {
     fn from_str(_: &str) -> Result<Self, RobotError> {
         Ok(())
     }
+    fn try_default() -> Self {}
 }
 
 impl CommandSerde for bool {
@@ -35,6 +42,10 @@ impl CommandSerde for bool {
             _ => Err(RobotError::DeserializeError),
         }
     }
+
+    fn try_default() -> Self {
+        false
+    }
 }
 
 impl CommandSerde for u8 {
@@ -43,6 +54,9 @@ impl CommandSerde for u8 {
     }
     fn from_str(data: &str) -> Result<Self, RobotError> {
         data.parse().map_err(|_| RobotError::DeserializeError)
+    }
+    fn try_default() -> Self {
+        0
     }
 }
 
@@ -53,6 +67,9 @@ impl CommandSerde for u16 {
     fn from_str(data: &str) -> Result<Self, RobotError> {
         data.parse().map_err(|_| RobotError::DeserializeError)
     }
+    fn try_default() -> Self {
+        0
+    }
 }
 
 impl CommandSerde for f64 {
@@ -61,6 +78,9 @@ impl CommandSerde for f64 {
     }
     fn from_str(data: &str) -> Result<Self, RobotError> {
         data.parse().map_err(|_| RobotError::DeserializeError)
+    }
+    fn try_default() -> Self {
+        0.0
     }
 }
 
@@ -78,6 +98,9 @@ where
             T1::from_str(data.next().unwrap())?,
             T2::from_str(data.next().unwrap())?,
         ))
+    }
+    fn try_default() -> Self {
+        (T1::try_default(), T2::try_default())
     }
 }
 
@@ -103,6 +126,9 @@ where
             T3::from_str(data.next().unwrap())?,
         ))
     }
+    fn try_default() -> Self {
+        (T1::try_default(), T2::try_default(), T3::try_default())
+    }
 }
 
 impl<const N: usize, T> CommandSerde for [T; N]
@@ -116,9 +142,11 @@ where
             .join(",")
     }
     fn from_str(data: &str) -> Result<Self, RobotError> {
-        let mut data = data.split(',');
-        assert_eq!(data.size_hint().0, N);
+        let mut data = data.split(",");
         Ok([T::from_str(data.next().unwrap()).unwrap(); N])
+    }
+    fn try_default() -> Self {
+        [T::try_default(); N]
     }
 }
 
@@ -128,5 +156,8 @@ impl CommandSerde for String {
     }
     fn from_str(data: &str) -> Result<Self, RobotError> {
         Ok(data.to_string())
+    }
+    fn try_default() -> Self {
+        String::new()
     }
 }

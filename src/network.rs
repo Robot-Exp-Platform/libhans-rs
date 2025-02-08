@@ -1,3 +1,6 @@
+#![allow(unused_imports)]
+
+use std::default;
 use std::io::{Read, Write};
 use std::net::{Shutdown, TcpStream};
 use std::time::Duration;
@@ -34,14 +37,17 @@ impl Network {
     }
 
     /// 连接到指定 IP 与端口
-    pub fn connect_to_cps(&mut self, host: &str, port: u16) -> HansResult<()> {
-        let addr = format!("{}:{}", host, port);
-        let stream = TcpStream::connect(&addr)?;
+    pub fn connect_to_cps(&mut self, _host: &str, _port: u16) -> HansResult<()> {
+        #[cfg(not(feature = "no_robot"))]
+        {
+            let addr = format!("{}:{}", _host, _port);
+            let stream = TcpStream::connect(&addr)?;
 
-        stream.set_read_timeout(Some(Duration::from_secs(3)))?;
-        stream.set_write_timeout(Some(Duration::from_secs(3)))?;
+            stream.set_read_timeout(Some(Duration::from_secs(3)))?;
+            stream.set_write_timeout(Some(Duration::from_secs(3)))?;
+            self.socket = Some(stream);
+        }
 
-        self.socket = Some(stream);
         self.connected = true;
         Ok(())
     }
@@ -67,6 +73,7 @@ impl Network {
         R: CommandSerde,
         S: CommandSerde,
     {
+        #[cfg(not(feature = "no_robot"))]
         if let Some(stream) = &mut self.socket {
             stream.write_all(cmd.to_string().as_bytes())?;
             let mut buffer = [0_u8; 1024];
@@ -76,6 +83,13 @@ impl Network {
             Err(RobotException::NetworkError(
                 "No active TCP connection.".into(),
             ))
+        }
+        #[cfg(feature = "no_robot")]
+        {
+            println!("[Info]send command: {}", cmd.to_string());
+            let default_ans = S::try_default();
+            println!("[Info]get answer: {}", default_ans.to_string());
+            Ok(default_ans)
         }
     }
 }

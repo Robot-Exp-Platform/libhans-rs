@@ -13,5 +13,7 @@ mod types;
 pub use network::*;
 pub use robot::HansRobot;
 pub use robot_error::RobotError;
+pub use robot_impl::CommandSubmit;
 pub use robot_mode::RobotMode;
 pub use robot_param::*;
+pub use types::CommandSerde;

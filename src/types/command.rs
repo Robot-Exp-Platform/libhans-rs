@@ -150,6 +150,9 @@ impl<const C: Command> CommandSerde for CommandHander<C> {
             Err(RobotError::DeserializeError)
         }
     }
+    fn try_default() -> Self {
+        CommandHander {}
+    }
 }
 
 impl<const C: Command, D: 'static> CommandSerde for CommandRequest<C, D>
@@ -175,6 +178,12 @@ where
             Err(RobotError::DeserializeError)
         }
     }
+    fn try_default() -> Self {
+        CommandRequest {
+            _handler: CommandHander {},
+            data: D::try_default(),
+        }
+    }
 }
 
 impl<const C: Command, S> CommandSerde for CommandResponse<C, S>
@@ -197,6 +206,12 @@ where
             Err(data)
         } else {
             Err(RobotError::DeserializeError)
+        }
+    }
+    fn try_default() -> Self {
+        CommandResponse {
+            _handler: CommandHander {},
+            status: Ok(S::try_default()),
         }
     }
 }

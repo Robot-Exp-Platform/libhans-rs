@@ -29,6 +29,14 @@ pub fn robot_serde_derive(input: TokenStream) -> TokenStream {
         }
     });
 
+    let try_default_impl = fields.iter().map(|f| {
+        let name = &f.ident;
+        let ty = &f.ty;
+        quote! {
+            #name: <#ty>::try_default()
+        }
+    });
+
     let expanded = quote! {
         impl CommandSerde for #name {
             fn to_string(&self) -> String {
@@ -40,6 +48,12 @@ pub fn robot_serde_derive(input: TokenStream) -> TokenStream {
                 Ok(#name {
                     #(#from_str_impl),*
                 })
+            }
+
+            fn try_default() -> Self {
+                #name {
+                    #(#try_default_impl),*
+                }
             }
         }
     };

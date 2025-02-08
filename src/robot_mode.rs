@@ -110,6 +110,10 @@ impl CommandSerde for RobotMode {
     fn from_str(data: &str) -> Result<Self, crate::robot_error::RobotError> {
         data.parse::<u8>()
             .map_err(|_| crate::robot_error::RobotError::DeserializeError)
-            .map(|v| RobotMode::from(v))
+            .map(RobotMode::from)
+    }
+
+    fn try_default() -> Self {
+        RobotMode::StandBy
     }
 }

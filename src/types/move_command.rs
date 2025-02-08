@@ -250,4 +250,12 @@ impl<const N: usize> CommandSerde for MovePaths<N> {
             points,
         })
     }
+
+    fn try_default() -> Self {
+        MovePaths {
+            path_name: CommandSerde::try_default(),
+            move_mode: CommandSerde::try_default(),
+            points: CommandSerde::try_default(),
+        }
+    }
 }

@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+use inventory::submit;
 
 use crate::{Network, RobotMode, exception::HansResult, robot_param::HANS_DOF, types::*};
 
@@ -7,15 +7,36 @@ pub struct RobotImpl {
     pub network: Network,
 }
 
+pub type DispatchFn = fn(&mut RobotImpl, &str) -> HansResult<String>;
+pub struct CommandSubmit {
+    pub fn_name: &'static str,
+    pub dispatch: DispatchFn,
+}
+inventory::collect!(CommandSubmit);
+
+macro_rules! submit {
+    ($fn_name:ident) => {
+        inventory::submit!(CommandSubmit {
+            fn_name: stringify!($fn_name),
+            dispatch: |robot: &mut RobotImpl, input: &str| -> HansResult<String> {
+                Ok(CommandSerde::to_string(&robot.$fn_name(CommandSerde::from_str(input)?)?))
+            }
+        });
+    };
+    ($($fn_name:ident),*) => {
+        $(submit!($fn_name);)*
+    };
+}
+
 macro_rules! cmd_fn {
     ($fn_name:ident, $req_type:ty, $res_type:ty) => {
-        pub fn $fn_name(&mut self) -> HansResult<()> {
+        pub fn $fn_name(&mut self, _:()) -> HansResult<()> {
             let response: $res_type = self.network.send_and_recv(&<$req_type>::from(()))?;
             response.status.map_err(Into::into)
         }
     };
     ($fn_name:ident, $req_type:ty, $res_type:ty;; $ret_type:ty) => {
-        pub fn $fn_name(&mut self) -> HansResult<$ret_type> {
+        pub fn $fn_name(&mut self, _:()) -> HansResult<$ret_type> {
             let response: $res_type = self.network.send_and_recv(&<$req_type>::from(()))?;
             Ok(response.status.unwrap())
         }
@@ -214,3 +235,110 @@ impl RobotImpl {
     cmd_fn!(push_servo_j, PushServoJRequest, PushServoJResponse; id_joint: (u8, [f64;HANS_DOF]));
     cmd_fn!(push_servo_p, PushServoPRequest, PushServoPResponse; id_pose_tcp_ucs: (u8, [[f64;6];3]));
 }
+
+submit!(
+    connect_to_box,
+    robot_power_on,
+    robot_power_off,
+    connect_to_controller,
+    disconnect_from_controller,
+    is_simulation,
+    is_controller_started
+);
+submit!(
+    robot_model,
+    robot_enable,
+    robot_disable,
+    robot_reset,
+    robot_move_stop,
+    robot_move_pause,
+    robot_move_continue,
+    robot_free_driver_open,
+    robot_free_driver_close
+);
+submit!(
+    box_info,
+    box_end_analog_input,
+    box_set_control_output,
+    box_set_digital_output,
+    box_set_analog_output_mode,
+    box_set_analog_output,
+    box_set_end_digital_output
+);
+submit!(
+    state_set_override,
+    state_set_tool_motion,
+    state_set_payload,
+    state_set_joint_max_vel,
+    state_set_joint_max_acc,
+    state_set_linear_max_vel,
+    state_set_linear_max_acc,
+    state_read_joint_max_vel,
+    state_read_joint_max_acc,
+    state_read_joint_max_jerk,
+    state_read_linear_max_vel,
+    state_read_emergency_info,
+    state_read_robot_state,
+    state_read_axis_error_code,
+    state_read_cur_fsm,
+    state_read_cmd_pos,
+    state_read_act_pos,
+    state_read_cmd_joint_vel,
+    state_read_act_joint_vel,
+    state_read_cmd_tcp_vel,
+    state_read_act_tcp_vel,
+    state_read_cmd_joint_cur,
+    state_read_act_joint_cur,
+    state_read_tcp_velocity
+);
+submit!(
+    set_pose_o_to_t,
+    set_pose_u_to_t,
+    read_pose_o_to_t,
+    read_pose_u_to_t
+);
+submit!(
+    force_control,
+    force_control_mode,
+    force_tool_coord,
+    force_interrupt,
+    force_continue,
+    force_zero,
+    force_max_search_vel,
+    force_control_strategy,
+    force_set_senor_pose_f_to,
+    force_pid_control_params,
+    force_mass_params,
+    force_damp_params,
+    force_stiff_params,
+    force_control_goal,
+    force_free_drive,
+    force_senor_data
+);
+submit!(
+    move_joint_rel,
+    move_line_rel,
+    move_way_point_rel,
+    move_way_point_ex,
+    move_way_point,
+    move_way_point2,
+    move_joint,
+    move_line,
+    move_circle,
+    start_push_move_path_j,
+    push_move_path_j,
+    end_push_move_path,
+    move_path_j,
+    read_move_path_state,
+    update_move_path_name,
+    del_move_path,
+    read_soft_motion_process,
+    start_push_move_path_l,
+    push_move_path_l,
+    push_move_paths,
+    move_path_l,
+    set_move_path_override,
+    start_servo,
+    push_servo_j,
+    push_servo_p
+);
