@@ -1,7 +1,6 @@
-#![allow(dead_code)]
-
 use super::command::{Command, CommandRequest, CommandResponse};
 use super::command_serde::CommandSerde;
+use crate::HansResult;
 use crate::robot_error::RobotError;
 use crate::robot_param::HANS_DOF;
 
@@ -235,7 +234,7 @@ impl<const N: usize> CommandSerde for MovePaths<N> {
         .join(",")
     }
 
-    fn from_str(data: &str) -> Result<Self, RobotError> {
+    fn from_str(data: &str) -> HansResult<Self> {
         let mut iter = data.split(',');
         let path_name = CommandSerde::from_str(iter.next().unwrap())?;
         let move_mode = CommandSerde::from_str(iter.next().unwrap())?;

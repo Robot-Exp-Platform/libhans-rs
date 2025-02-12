@@ -1,10 +1,12 @@
-use std::default;
+use std::{any::type_name, default};
 
-use crate::robot_error::RobotError;
+use robot_behavior::{RobotException, deserialize_error};
+
+use crate::{exception::HansResult, robot_error::RobotError};
 
 pub trait CommandSerde: Sized {
     fn to_string(&self) -> String;
-    fn from_str(data: &str) -> Result<Self, RobotError>;
+    fn from_str(data: &str) -> HansResult<Self>;
     fn try_default() -> Self;
 }
 
@@ -12,8 +14,8 @@ impl CommandSerde for RobotError {
     fn to_string(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
-    fn from_str(data: &str) -> Result<Self, RobotError> {
-        serde_json::from_str(data).map_err(|_| RobotError::DeserializeError)
+    fn from_str(data: &str) -> HansResult<Self> {
+        serde_json::from_str(data).map_err(deserialize_error::<RobotError, _>(data))
     }
     fn try_default() -> Self {
         Self::default()
@@ -24,7 +26,7 @@ impl CommandSerde for () {
     fn to_string(&self) -> String {
         String::new()
     }
-    fn from_str(_: &str) -> Result<Self, RobotError> {
+    fn from_str(_: &str) -> HansResult<Self> {
         Ok(())
     }
     fn try_default() -> Self {}
@@ -35,11 +37,11 @@ impl CommandSerde for bool {
         format!("{}", if *self { 1 } else { 0 })
     }
 
-    fn from_str(data: &str) -> Result<Self, RobotError> {
+    fn from_str(data: &str) -> HansResult<Self> {
         match data {
             "0" => Ok(false),
             "1" => Ok(true),
-            _ => Err(RobotError::DeserializeError),
+            _ => Err(deserialize_error::<bool, _>(data)(())),
         }
     }
 
@@ -52,8 +54,8 @@ impl CommandSerde for u8 {
     fn to_string(&self) -> String {
         format!("{}", self)
     }
-    fn from_str(data: &str) -> Result<Self, RobotError> {
-        data.parse().map_err(|_| RobotError::DeserializeError)
+    fn from_str(data: &str) -> HansResult<Self> {
+        data.parse().map_err(deserialize_error::<u8, _>(data))
     }
     fn try_default() -> Self {
         0
@@ -64,8 +66,8 @@ impl CommandSerde for u16 {
     fn to_string(&self) -> String {
         format!("{}", self)
     }
-    fn from_str(data: &str) -> Result<Self, RobotError> {
-        data.parse().map_err(|_| RobotError::DeserializeError)
+    fn from_str(data: &str) -> HansResult<Self> {
+        data.parse().map_err(deserialize_error::<u16, _>(data))
     }
     fn try_default() -> Self {
         0
@@ -76,8 +78,8 @@ impl CommandSerde for f64 {
     fn to_string(&self) -> String {
         format!("{}", self)
     }
-    fn from_str(data: &str) -> Result<Self, RobotError> {
-        data.parse().map_err(|_| RobotError::DeserializeError)
+    fn from_str(data: &str) -> HansResult<Self> {
+        data.parse().map_err(deserialize_error::<f64, _>(data))
     }
     fn try_default() -> Self {
         0.0
@@ -92,7 +94,7 @@ where
     fn to_string(&self) -> String {
         format!("{},{}", self.0.to_string(), self.1.to_string())
     }
-    fn from_str(data: &str) -> Result<Self, RobotError> {
+    fn from_str(data: &str) -> HansResult<Self> {
         let mut data = data.split(',');
         Ok((
             T1::from_str(data.next().unwrap())?,
@@ -118,7 +120,7 @@ where
             self.2.to_string()
         )
     }
-    fn from_str(data: &str) -> Result<Self, RobotError> {
+    fn from_str(data: &str) -> HansResult<Self> {
         let mut data = data.split(',');
         Ok((
             T1::from_str(data.next().unwrap())?,
@@ -141,7 +143,7 @@ where
             .collect::<Vec<_>>()
             .join(",")
     }
-    fn from_str(data: &str) -> Result<Self, RobotError> {
+    fn from_str(data: &str) -> HansResult<Self> {
         let mut data = data.split(",");
         Ok([T::from_str(data.next().unwrap()).unwrap(); N])
     }
@@ -154,7 +156,7 @@ impl CommandSerde for String {
     fn to_string(&self) -> String {
         self.clone()
     }
-    fn from_str(data: &str) -> Result<Self, RobotError> {
+    fn from_str(data: &str) -> HansResult<Self> {
         Ok(data.to_string())
     }
     fn try_default() -> Self {

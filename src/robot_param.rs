@@ -8,7 +8,8 @@ pub const ROPLAT_ASCII: &str = r#"
   #     #   #     #   #     # 
    #####    #     #    ##### 
   #   #     #     #   #      
-  #    #     #####    #      
+  #    #    #     #   #      
+  #     #    #####    #      
 "#;
 
 pub const HANS_ASCII: &str = r#"

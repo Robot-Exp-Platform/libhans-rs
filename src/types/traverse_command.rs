@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use super::command::{Command, CommandRequest, CommandResponse};
 
 pub type SetCurTCPRequest = CommandRequest<{ Command::SetCurTCP }, (u8, [f64; 6])>;

@@ -1,17 +1,26 @@
 use colored::Colorize;
-use libhans_rs::{CommandSerde, CommandSubmit, HANS_ASCII, HANS_DOF, HansRobot, ROPLAT_ASCII};
+use libhans_rs::{
+    CommandSerde, CommandSubmit, HANS_ASCII, HANS_DOF, HansRobot, PORT_IF, ROPLAT_ASCII,
+};
 use robot_behavior::{RobotBehavior, RobotException};
 use std::collections::HashMap;
+use std::env;
 use std::io::{self, Write};
 
 fn main() {
-    let mut command_map = HashMap::new();
+    let args: Vec<String> = env::args().collect();
+    let ip = if args.len() < 2 {
+        "192.168.10.3"
+    } else {
+        &args[1]
+    };
 
+    let mut command_map = HashMap::new();
     for cmd in inventory::iter::<CommandSubmit> {
         command_map.insert(cmd.fn_name, cmd.dispatch);
     }
 
-    let mut robot = HansRobot::new("127.0.0.1");
+    let mut robot = HansRobot::new(&ip);
 
     println!("{}", ROPLAT_ASCII.blue());
     println!("<<<<<<Welcome to the robot control interface, we are roplat>>>>>>");
@@ -33,12 +42,15 @@ fn main() {
 
         match args[0] {
             "connect" => {
-                if args.len() != 3 {
-                    println!("Usage: connect <IP> <PORT>");
-                    continue;
-                }
-                let ip = args[1];
-                let port: u16 = args[2].parse().unwrap();
+                let (ip, port) = match args.len() {
+                    3 => (args[1], args[2].parse().unwrap()),
+                    2 => (args[1], PORT_IF),
+                    1 => (ip, PORT_IF),
+                    _ => {
+                        println!("Usage: \t connect <IP> <PORT> \n\t connect <IP> \n\t connect");
+                        continue;
+                    }
+                };
                 robot.connect(ip, port);
                 println!("Connected to {}:{}", ip, port);
             }

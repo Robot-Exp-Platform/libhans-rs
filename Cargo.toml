@@ -23,5 +23,5 @@ command_derive = { path = "src/command_derive" }
 robot_behavior = { path = "crates/robot_behavior" }
 
 [features]
-default = ["no_robot"]
+# default = ["no_robot"]
 no_robot = []

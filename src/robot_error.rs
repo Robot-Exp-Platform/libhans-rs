@@ -14,7 +14,6 @@ pub enum RobotError {
     RECParametersError = 40034,
     RECCmdFormatError = 40056,
 
-    DeserializeError = 65534,
     IoError = 65535,
 }
 
@@ -26,7 +25,6 @@ impl Display for RobotError {
             RobotError::ControllerNotInit => write!(f, "Controller not init"),
             RobotError::RECParametersError => write!(f, "REC parameters error"),
             RobotError::RECCmdFormatError => write!(f, "REC cmd format error"),
-            RobotError::DeserializeError => write!(f, "Deserialize error"),
             RobotError::IoError => write!(f, "Io error"),
         }
     }

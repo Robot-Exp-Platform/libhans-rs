@@ -1,8 +1,9 @@
+use robot_behavior::deserialize_error;
 use serde::{Deserialize, Serialize};
 use std::marker::ConstParamTy;
 
 use super::command_serde::CommandSerde;
-use crate::robot_error::RobotError;
+use crate::{exception::HansResult, robot_error::RobotError};
 
 #[derive(ConstParamTy, PartialEq, Eq, Serialize, Deserialize, Debug)]
 pub enum Command {
@@ -143,11 +144,11 @@ impl<const C: Command> CommandSerde for CommandHander<C> {
     fn to_string(&self) -> String {
         format!("{:?}", C)
     }
-    fn from_str(data: &str) -> Result<Self, RobotError> {
+    fn from_str(data: &str) -> HansResult<Self> {
         if data == format!("{:?}", C) {
             Ok(CommandHander {})
         } else {
-            Err(RobotError::DeserializeError)
+            Err(deserialize_error::<CommandHander<C>, _>(data)(()))
         }
     }
     fn try_default() -> Self {
@@ -166,7 +167,7 @@ where
             format!("{:?},{},;", C, self.data.to_string())
         }
     }
-    fn from_str(data: &str) -> Result<Self, RobotError> {
+    fn from_str(data: &str) -> HansResult<Self> {
         let command = format!("{:?}", C);
         if data.starts_with(&command) {
             let data = D::from_str(&data[command.len()..data.len() - 2])?;
@@ -175,7 +176,7 @@ where
                 data,
             })
         } else {
-            Err(RobotError::DeserializeError)
+            Err(deserialize_error::<CommandRequest<C, D>, _>(data)(()))
         }
     }
     fn try_default() -> Self {
@@ -193,7 +194,7 @@ where
     fn to_string(&self) -> String {
         format!("{:?},{},;", C, self.status.as_ref().unwrap().to_string())
     }
-    fn from_str(data: &str) -> Result<Self, RobotError> {
+    fn from_str(data: &str) -> HansResult<Self> {
         let command = format!("{:?}", C);
         if data.starts_with(&(command.clone() + ",OK,")) {
             let data = S::from_str(&data[3..data.len() - 1])?;
@@ -203,9 +204,12 @@ where
             })
         } else if data.starts_with(&(command + ",Fail,")) {
             let data = RobotError::from_str(&data[4..data.len() - 1])?;
-            Err(data)
+            Ok(CommandResponse {
+                _handler: CommandHander {},
+                status: Err(data),
+            })
         } else {
-            Err(RobotError::DeserializeError)
+            Err(deserialize_error::<CommandResponse<C, S>, _>(data)(()))
         }
     }
     fn try_default() -> Self {

@@ -10,6 +10,7 @@ mod robot_param;
 mod robot_state;
 mod types;
 
+pub use exception::HansResult;
 pub use network::*;
 pub use robot::HansRobot;
 pub use robot_error::RobotError;

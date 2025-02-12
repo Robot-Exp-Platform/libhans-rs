@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use super::command::{Command, CommandRequest, CommandResponse};
 
 pub type OSCmdRequest = CommandRequest<{ Command::OSCmd }, u8>;

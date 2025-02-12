@@ -1,7 +1,6 @@
-#![allow(dead_code)]
-
 use super::command::{Command, CommandRequest, CommandResponse};
 use super::command_serde::CommandSerde;
+use crate::HansResult;
 use crate::RobotMode;
 use crate::robot_error::RobotError;
 use crate::robot_param::HANS_DOF;
