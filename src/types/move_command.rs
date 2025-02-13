@@ -65,14 +65,14 @@ pub type PushServoPResponse = CommandResponse<{ Command::PushServoP }, ()>;
 #[derive(Default, command_derive::CommandSerde)]
 pub struct RelJ {
     pub id: u8,
-    pub dir_plus: bool,
+    pub dir: bool,
     pub dis: f64,
 }
 
 #[derive(Default, command_derive::CommandSerde)]
 pub struct RelL {
     pub id: u8,
-    pub dir_plus: bool,
+    pub dir: bool,
     pub dis: f64,
     pub coord: u8,
 }

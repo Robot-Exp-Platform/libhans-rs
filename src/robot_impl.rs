@@ -88,12 +88,12 @@ impl RobotImpl {
 
     /// 连接网络，使用指定的 ip 与端口
     pub fn connect(&mut self, ip: &str, port: u16) {
-        self.network.connect_to_cps(ip, port).unwrap();
+        self.network.connect(ip, port).unwrap();
     }
 
     /// 断开网络连接
     pub fn disconnect(&mut self) {
-        self.network.disconnect_from_cps().unwrap();
+        self.network.disconnect().unwrap();
     }
 
     pub fn is_connected(&self) -> bool {

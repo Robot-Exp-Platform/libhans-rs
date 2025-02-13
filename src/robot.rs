@@ -4,7 +4,7 @@ use robot_behavior::{ArmBehavior, MotionType, RobotBehavior, RobotException};
 use crate::{
     HANS_DOF, HANS_VERSION, RobotMode,
     robot_impl::RobotImpl,
-    types::{StartPushMovePathJ, StartPushMovePathL, WayPointEx},
+    types::{RelJ, RelL, StartPushMovePathJ, StartPushMovePathL, WayPointEx},
 };
 
 #[derive(Default)]
@@ -37,6 +37,10 @@ impl HansRobot {
         self.move_to(MotionType::Joint(joints))
     }
 
+    pub fn move_joints_rel(&mut self, joints: [f64; HANS_DOF]) -> robot_behavior::RobotResult<()> {
+        self.move_rel(MotionType::Joint(joints))
+    }
+
     pub fn move_linear_with_quaternion(
         &mut self,
         position: [f64; 3],
@@ -61,6 +65,13 @@ impl HansRobot {
 
     pub fn move_linear_with_euler(&mut self, pose: [f64; 6]) -> robot_behavior::RobotResult<()> {
         self.move_to(MotionType::CartesianEuler(pose))
+    }
+
+    pub fn move_linear_with_euler_rel(
+        &mut self,
+        pose: [f64; 6],
+    ) -> robot_behavior::RobotResult<()> {
+        self.move_rel(MotionType::CartesianEuler(pose))
     }
 }
 
@@ -181,6 +192,66 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
                     ..WayPointEx::default()
                 };
                 self.robot_impl.move_way_point_ex((0, move_config))?;
+            }
+            _ => {
+                return Err(RobotException::UnprocessableInstructionError(
+                    "Unsupported motion type".into(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn move_rel(&mut self, rel: MotionType<HANS_DOF>) -> robot_behavior::RobotResult<()> {
+        self.move_rel_async(rel)?;
+        loop {
+            let state = self.robot_impl.state_read_cur_fsm(0)?;
+            if state == RobotMode::StandBy {
+                break;
+            }
+        }
+
+        self.is_moving = false;
+        Ok(())
+    }
+
+    fn move_rel_async(&mut self, rel: MotionType<HANS_DOF>) -> robot_behavior::RobotResult<()> {
+        if self.is_moving() {
+            return Err(RobotException::UnprocessableInstructionError(
+                "Robot is moving, you can not push new move command".into(),
+            ));
+        }
+        self.is_moving = true;
+
+        match rel {
+            MotionType::Joint(joint) => {
+                for (id, joint) in joint.iter().enumerate().take(HANS_DOF) {
+                    if *joint == 0. {
+                        continue;
+                    }
+                    let dir = *joint > 0.;
+                    let move_config = RelJ {
+                        id: id as u8,
+                        dir,
+                        dis: joint.abs(),
+                    };
+                    self.robot_impl.move_joint_rel((0, move_config))?;
+                }
+            }
+            MotionType::CartesianEuler(pose) => {
+                for (id, pose) in pose.iter().enumerate().take(HANS_DOF) {
+                    if *pose == 0. {
+                        continue;
+                    }
+                    let dir = *pose >= 0.;
+                    let move_config = RelL {
+                        id: id as u8,
+                        dir,
+                        dis: pose.abs(),
+                        coord: 0,
+                    };
+                    self.robot_impl.move_line_rel((0, move_config))?;
+                }
             }
             _ => {
                 return Err(RobotException::UnprocessableInstructionError(

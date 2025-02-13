@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+clap = { version = "*", features = ["derive"] }
 serde_repr = "*"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "*"
@@ -15,7 +16,6 @@ num-derive = "*"
 thiserror = "*"
 nalgebra = "*"
 bincode = "*"
-clap = "*"
 inventory = "*"
 colored = "*"
 
@@ -23,5 +23,5 @@ command_derive = { path = "src/command_derive" }
 robot_behavior = { path = "crates/robot_behavior" }
 
 [features]
-# default = ["no_robot"]
+default = ["no_robot"]
 no_robot = []

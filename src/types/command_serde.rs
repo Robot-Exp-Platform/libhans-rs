@@ -144,8 +144,13 @@ where
             .join(",")
     }
     fn from_str(data: &str) -> HansResult<Self> {
-        let mut data = data.split(",");
-        Ok([T::from_str(data.next().unwrap()).unwrap(); N])
+        let try_data = data
+            .split(',')
+            .map(|x| T::from_str(x).unwrap())
+            .collect::<Vec<T>>()
+            .try_into()
+            .map_err(deserialize_error::<[T; N], _>(data))?;
+        Ok(try_data)
     }
     fn try_default() -> Self {
         [T::try_default(); N]
