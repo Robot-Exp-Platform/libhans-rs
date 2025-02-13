@@ -28,7 +28,7 @@ pub struct Network {
 impl Network {
     pub fn from_ip(host: &str, port: u16) -> Self {
         let mut network = Network::default();
-        network.connect_to_cps(host, port).unwrap();
+        network.connect(host, port).unwrap();
         network
     }
 
@@ -37,7 +37,7 @@ impl Network {
     }
 
     /// 连接到指定 IP 与端口
-    pub fn connect_to_cps(&mut self, _host: &str, _port: u16) -> HansResult<()> {
+    pub fn connect(&mut self, _host: &str, _port: u16) -> HansResult<()> {
         #[cfg(not(feature = "no_robot"))]
         {
             let addr = format!("{}:{}", _host, _port);
@@ -53,7 +53,7 @@ impl Network {
     }
 
     /// 断开 TCP 连接
-    pub fn disconnect_from_cps(&mut self) -> HansResult<()> {
+    pub fn disconnect(&mut self) -> HansResult<()> {
         if let Some(stream) = &self.socket {
             stream.shutdown(Shutdown::Both)?;
         }
