@@ -1,6 +1,6 @@
 use clap::{ArgGroup, Args, Parser};
 use colored::Colorize;
-use libhans_rs::{
+use libhans::{
     CommandSerde, CommandSubmit, DispatchFn, HANS_ASCII, HANS_DOF, HansRobot, PORT_IF, ROPLAT_ASCII,
 };
 use robot_behavior::{RobotBehavior, RobotException};
@@ -67,12 +67,20 @@ fn cli_root(
             robot.disconnect();
             println!("Disconnected");
         }
+        RootCommand::Enable => {
+            let _ = robot.enable();
+            println!("Enabled");
+        }
+        RootCommand::Disable => {
+            let _ = robot.disable();
+            println!("Disabled");
+        }
         RootCommand::RobotImpl => {
             *cli_state = CliState::RobotImpl;
         }
         RootCommand::Move(args) => match (args.relative, args.joints, args.linear) {
             (true, Some(joints), None) => {
-                robot.move_joints_rel(joints)?;
+                robot.move_joint_rel(joints)?;
                 println!("Moved joints for {:?}", joints);
             }
             (true, None, Some(linear)) => {
@@ -80,7 +88,7 @@ fn cli_root(
                 println!("Moved linear for {:?}", linear);
             }
             (false, Some(joints), None) => {
-                robot.move_joints(joints)?;
+                robot.move_joint(joints)?;
                 println!("Moved joints to {:?}", joints);
             }
             (false, None, Some(linear)) => {
@@ -137,6 +145,8 @@ enum RootCommand {
     #[command(arg_required_else_help = true)]
     Connect(ConnectArgs),
     Disconnect,
+    Enable,
+    Disable,
     RobotImpl,
     #[command(arg_required_else_help = true)]
     #[command(group(
@@ -151,7 +161,7 @@ enum RootCommand {
 
 #[derive(Debug, Parser, Clone)]
 struct ConnectArgs {
-    #[arg(default_value = "192.168.10.3")]
+    #[arg(short, long, default_value = "192.168.10.2")]
     ip: String,
 
     #[arg(short, long, default_value_t = PORT_IF)]

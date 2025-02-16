@@ -8,6 +8,9 @@ pub trait CommandSerde: Sized {
     fn to_string(&self) -> String;
     fn from_str(data: &str) -> HansResult<Self>;
     fn try_default() -> Self;
+    fn num_args() -> usize {
+        1
+    }
 }
 
 impl CommandSerde for RobotError {
@@ -30,6 +33,9 @@ impl CommandSerde for () {
         Ok(())
     }
     fn try_default() -> Self {}
+    fn num_args() -> usize {
+        0
+    }
 }
 
 impl CommandSerde for bool {
@@ -104,6 +110,9 @@ where
     fn try_default() -> Self {
         (T1::try_default(), T2::try_default())
     }
+    fn num_args() -> usize {
+        2
+    }
 }
 
 impl<T1, T2, T3> CommandSerde for (T1, T2, T3)
@@ -131,6 +140,9 @@ where
     fn try_default() -> Self {
         (T1::try_default(), T2::try_default(), T3::try_default())
     }
+    fn num_args() -> usize {
+        3
+    }
 }
 
 impl<const N: usize, T> CommandSerde for [T; N]
@@ -154,6 +166,9 @@ where
     }
     fn try_default() -> Self {
         [T::try_default(); N]
+    }
+    fn num_args() -> usize {
+        N
     }
 }
 

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use libhans_rs::{CommandSubmit, HansRobot};
+    use libhans::{CommandSubmit, HansRobot};
 
     #[test]
     fn test_all() {

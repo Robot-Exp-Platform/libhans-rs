@@ -154,6 +154,9 @@ impl<const C: Command> CommandSerde for CommandHander<C> {
     fn try_default() -> Self {
         CommandHander {}
     }
+    fn num_args() -> usize {
+        0
+    }
 }
 
 impl<const C: Command, D: 'static> CommandSerde for CommandRequest<C, D>
@@ -185,6 +188,9 @@ where
             data: D::try_default(),
         }
     }
+    fn num_args() -> usize {
+        D::num_args()
+    }
 }
 
 impl<const C: Command, S> CommandSerde for CommandResponse<C, S>
@@ -197,18 +203,21 @@ where
     fn from_str(data: &str) -> HansResult<Self> {
         let command = format!("{:?}", C);
         if data.starts_with(&(command.clone() + ",OK,")) {
-            let data = S::from_str(&data[3..data.len() - 1])?;
+            let data = &data[&command.len() + 3..data.len() - 2];
+            let data = S::from_str(if data.is_empty() { "" } else { &data[1..] })?;
             Ok(CommandResponse {
                 _handler: CommandHander {},
                 status: Ok(data),
             })
-        } else if data.starts_with(&(command + ",Fail,")) {
-            let data = RobotError::from_str(&data[4..data.len() - 1])?;
+        } else if data.starts_with(&(command.clone() + ",Fail,")) {
+            let data = &data[&command.len() + 5..data.len() - 2];
+            let data = RobotError::from_str(if data.is_empty() { "" } else { &data[1..] })?;
             Ok(CommandResponse {
                 _handler: CommandHander {},
                 status: Err(data),
             })
         } else {
+            println!("data: {:?}", data);
             Err(deserialize_error::<CommandResponse<C, S>, _>(data)(()))
         }
     }
@@ -217,6 +226,9 @@ where
             _handler: CommandHander {},
             status: Ok(S::try_default()),
         }
+    }
+    fn num_args() -> usize {
+        S::num_args()
     }
 }
 

@@ -1,8 +1,8 @@
 use nalgebra as na;
-use robot_behavior::{ArmBehavior, MotionType, RobotBehavior, RobotException};
+use robot_behavior::{ArmBehavior, ControlType, MotionType, RobotBehavior, RobotException};
 
 use crate::{
-    HANS_DOF, HANS_VERSION, RobotMode,
+    HANS_DOF, HANS_VERSION, HansResult, RobotMode,
     robot_impl::RobotImpl,
     types::{RelJ, RelL, StartPushMovePathJ, StartPushMovePathL, WayPointEx},
 };
@@ -33,11 +33,11 @@ impl HansRobot {
         self.robot_impl.disconnect();
     }
 
-    pub fn move_joints(&mut self, joints: [f64; HANS_DOF]) -> robot_behavior::RobotResult<()> {
+    pub fn move_joint(&mut self, joints: [f64; HANS_DOF]) -> HansResult<()> {
         self.move_to(MotionType::Joint(joints))
     }
 
-    pub fn move_joints_rel(&mut self, joints: [f64; HANS_DOF]) -> robot_behavior::RobotResult<()> {
+    pub fn move_joint_rel(&mut self, joints: [f64; HANS_DOF]) -> HansResult<()> {
         self.move_rel(MotionType::Joint(joints))
     }
 
@@ -45,7 +45,7 @@ impl HansRobot {
         &mut self,
         position: [f64; 3],
         quaternion: [f64; 4],
-    ) -> robot_behavior::RobotResult<()> {
+    ) -> HansResult<()> {
         let rotation = na::UnitQuaternion::from_quaternion(na::Quaternion::new(
             quaternion[3],
             quaternion[0],
@@ -56,21 +56,15 @@ impl HansRobot {
         self.move_to(MotionType::CartesianQuat(pose))
     }
 
-    pub fn move_linear_with_homogeneous(
-        &mut self,
-        _: [f64; 16],
-    ) -> robot_behavior::RobotResult<()> {
+    pub fn move_linear_with_homogeneous(&mut self, _: [f64; 16]) -> HansResult<()> {
         unimplemented!("move_linear_with_homogeneous is not implemented")
     }
 
-    pub fn move_linear_with_euler(&mut self, pose: [f64; 6]) -> robot_behavior::RobotResult<()> {
+    pub fn move_linear_with_euler(&mut self, pose: [f64; 6]) -> HansResult<()> {
         self.move_to(MotionType::CartesianEuler(pose))
     }
 
-    pub fn move_linear_with_euler_rel(
-        &mut self,
-        pose: [f64; 6],
-    ) -> robot_behavior::RobotResult<()> {
+    pub fn move_linear_with_euler_rel(&mut self, pose: [f64; 6]) -> HansResult<()> {
         self.move_rel(MotionType::CartesianEuler(pose))
     }
 }
@@ -80,7 +74,7 @@ impl RobotBehavior for HansRobot {
         format!("HansRobot v{}", HANS_VERSION)
     }
 
-    fn init(&mut self) -> robot_behavior::RobotResult<()> {
+    fn init(&mut self) -> HansResult<()> {
         if self.robot_impl.is_connected() {
             self.robot_impl.robot_power_on(())?;
             Ok(())
@@ -91,22 +85,22 @@ impl RobotBehavior for HansRobot {
         }
     }
 
-    fn shutdown(&mut self) -> robot_behavior::RobotResult<()> {
+    fn shutdown(&mut self) -> HansResult<()> {
         self.disable()?;
         Ok(())
     }
 
-    fn enable(&mut self) -> robot_behavior::RobotResult<()> {
+    fn enable(&mut self) -> HansResult<()> {
         self.robot_impl.robot_enable(0)?;
         Ok(())
     }
 
-    fn disable(&mut self) -> robot_behavior::RobotResult<()> {
+    fn disable(&mut self) -> HansResult<()> {
         self.robot_impl.robot_disable(0)?;
         Ok(())
     }
 
-    fn reset(&mut self) -> robot_behavior::RobotResult<()> {
+    fn reset(&mut self) -> HansResult<()> {
         self.robot_impl.robot_reset(0)?;
         Ok(())
     }
@@ -119,30 +113,27 @@ impl RobotBehavior for HansRobot {
         self.is_moving
     }
 
-    fn stop(&mut self) -> robot_behavior::RobotResult<()> {
+    fn stop(&mut self) -> HansResult<()> {
         self.robot_impl.robot_move_stop(0)?;
         Ok(())
     }
 
-    fn resume(&mut self) -> robot_behavior::RobotResult<()> {
+    fn resume(&mut self) -> HansResult<()> {
         self.robot_impl.robot_move_continue(0)?;
         Ok(())
     }
 
-    fn emergency_stop(&mut self) -> robot_behavior::RobotResult<()> {
+    fn emergency_stop(&mut self) -> HansResult<()> {
         unimplemented!("hans robot does not support emergency stop")
     }
 
-    fn clear_emergency_stop(&mut self) -> robot_behavior::RobotResult<()> {
+    fn clear_emergency_stop(&mut self) -> HansResult<()> {
         unimplemented!("hans robot does not support clear emergency stop")
     }
 }
 
 impl ArmBehavior<HANS_DOF> for HansRobot {
-    fn move_to(
-        &mut self,
-        target: robot_behavior::MotionType<HANS_DOF>,
-    ) -> robot_behavior::RobotResult<()> {
+    fn move_to(&mut self, target: MotionType<HANS_DOF>) -> HansResult<()> {
         self.move_to_async(target)?;
         loop {
             let state = self.robot_impl.state_read_cur_fsm(0)?;
@@ -155,10 +146,7 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_to_async(
-        &mut self,
-        target: robot_behavior::MotionType<HANS_DOF>,
-    ) -> robot_behavior::RobotResult<()> {
+    fn move_to_async(&mut self, target: MotionType<HANS_DOF>) -> HansResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -167,7 +155,7 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
         self.is_moving = true;
 
         match target {
-            robot_behavior::MotionType::Joint(joint) => {
+            MotionType::Joint(joint) => {
                 let move_config = WayPointEx {
                     joint,
                     vel: 25.,
@@ -180,7 +168,7 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
                 };
                 self.robot_impl.move_way_point_ex((0, move_config))?;
             }
-            robot_behavior::MotionType::CartesianEuler(pose) => {
+            MotionType::CartesianEuler(pose) => {
                 let move_config = WayPointEx {
                     pose,
                     vel: 25.,
@@ -202,7 +190,7 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_rel(&mut self, rel: MotionType<HANS_DOF>) -> robot_behavior::RobotResult<()> {
+    fn move_rel(&mut self, rel: MotionType<HANS_DOF>) -> HansResult<()> {
         self.move_rel_async(rel)?;
         loop {
             let state = self.robot_impl.state_read_cur_fsm(0)?;
@@ -215,7 +203,7 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_rel_async(&mut self, rel: MotionType<HANS_DOF>) -> robot_behavior::RobotResult<()> {
+    fn move_rel_async(&mut self, rel: MotionType<HANS_DOF>) -> HansResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -262,7 +250,7 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_path(&mut self, path: Vec<MotionType<HANS_DOF>>) -> robot_behavior::RobotResult<()> {
+    fn move_path(&mut self, path: Vec<MotionType<HANS_DOF>>) -> HansResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -321,10 +309,7 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn control_with(
-        &mut self,
-        _: robot_behavior::ControlType<HANS_DOF>,
-    ) -> robot_behavior::RobotResult<()> {
+    fn control_with(&mut self, _: ControlType<HANS_DOF>) -> HansResult<()> {
         unimplemented!("control_with is not implemented")
     }
 }
