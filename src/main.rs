@@ -5,7 +5,8 @@ use libhans::{
 };
 use robot_behavior::{RobotBehavior, RobotException};
 use std::collections::HashMap;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
+use std::net::TcpStream;
 
 enum CliState {
     Root,
@@ -97,6 +98,14 @@ fn cli_root(
             }
             _ => unimplemented!("Move command is not implemented"),
         },
+        RootCommand::MoveFromTcp => {
+            let mut tcp = TcpStream::connect("192.168.10.7:25532").unwrap();
+            let mut buffer = [0; 48]; // 6 f64 values, each 8 bytes
+            tcp.read_exact(&mut buffer).unwrap();
+            let linear: [f64; 6] = unsafe { std::ptr::read(buffer.as_ptr() as *const [f64; 6]) };
+            robot.move_linear_with_euler(linear)?;
+            println!("Moved linear to {:?}", linear);
+        }
         RootCommand::Version => {
             println!("{}", robot.version());
         }
@@ -155,6 +164,7 @@ enum RootCommand {
             .args(&["joints", "linear"]),
     ))]
     Move(MoveArgs),
+    MoveFromTcp,
     Version,
     Exit,
 }
