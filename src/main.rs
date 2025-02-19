@@ -1,5 +1,7 @@
 use clap::{ArgGroup, Args, Parser};
 use colored::Colorize;
+use crossterm::event::{self, Event, KeyCode, poll};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use libhans::{
     CommandSerde, CommandSubmit, DispatchFn, HANS_ASCII, HANS_DOF, HansRobot, PORT_IF, ROPLAT_ASCII,
 };
@@ -7,10 +9,12 @@ use robot_behavior::{RobotBehavior, RobotException};
 use std::collections::HashMap;
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
+use std::time::Duration;
 
 enum CliState {
     Root,
     RobotImpl,
+    KeyBoard,
 }
 
 fn main() {
@@ -32,6 +36,7 @@ fn main() {
         match cli_state {
             CliState::Root => print!("{} ", "robot>".blue()),
             CliState::RobotImpl => print!("{} ", "robot>robot_impl>".blue()),
+            CliState::KeyBoard => print!("{} ", "robot>keyboard>".blue()),
         }
         io::stdout().flush().unwrap();
 
@@ -41,6 +46,7 @@ fn main() {
         let result = match cli_state {
             CliState::Root => cli_root(&mut cli_state, &mut robot, &input),
             CliState::RobotImpl => cli_robot_impl(&mut cli_state, &mut robot, &input, &command_map),
+            CliState::KeyBoard => cli_key_board(&mut cli_state, &mut robot),
         };
 
         if let Err(e) = result {
@@ -106,6 +112,9 @@ fn cli_root(
             robot.move_linear_with_euler(linear)?;
             println!("Moved linear to {:?}", linear);
         }
+        RootCommand::KeyBoardControl => {
+            *cli_state = CliState::KeyBoard;
+        }
         RootCommand::Version => {
             println!("{}", robot.version());
         }
@@ -148,6 +157,70 @@ fn cli_robot_impl(
     Ok(())
 }
 
+fn cli_key_board(cli_state: &mut CliState, robot: &mut HansRobot) -> Result<(), RobotException> {
+    robot.robot_impl.state_set_override((0, 0.3))?;
+    enable_raw_mode().unwrap();
+    let mut stdout = io::stdout();
+    println!("Press ESC to exit.");
+    loop {
+        let mut joints = [0.; 6];
+        let mut linear = [0.; 6];
+        if poll(Duration::from_millis(100)).unwrap() {
+            let mut key = event::read().unwrap();
+            while poll(Duration::from_millis(0)).unwrap() {
+                if let Ok(e) = event::read() {
+                    key = e;
+                } else {
+                    break;
+                }
+            }
+            if let Event::Key(key_event) = key {
+                match key_event.code {
+                    KeyCode::Char('1') => joints[0] = 1.0,
+                    KeyCode::Char('2') => joints[1] = 1.0,
+                    KeyCode::Char('3') => joints[2] = 1.0,
+                    KeyCode::Char('4') => joints[3] = 1.0,
+                    KeyCode::Char('5') => joints[4] = 1.0,
+                    KeyCode::Char('6') => joints[5] = 1.0,
+                    KeyCode::Char('q') => joints[0] = -1.0,
+                    KeyCode::Char('w') => joints[1] = -1.0,
+                    KeyCode::Char('e') => joints[2] = -1.0,
+                    KeyCode::Char('r') => joints[3] = -1.0,
+                    KeyCode::Char('t') => joints[4] = -1.0,
+                    KeyCode::Char('y') => joints[5] = -1.0,
+                    KeyCode::Char('a') => linear[0] = 1.0,
+                    KeyCode::Char('s') => linear[1] = 1.0,
+                    KeyCode::Char('d') => linear[2] = 1.0,
+                    KeyCode::Char('f') => linear[3] = 1.0,
+                    KeyCode::Char('g') => linear[4] = 1.0,
+                    KeyCode::Char('h') => linear[5] = 1.0,
+                    KeyCode::Char('z') => linear[0] = -1.0,
+                    KeyCode::Char('x') => linear[1] = -1.0,
+                    KeyCode::Char('c') => linear[2] = -1.0,
+                    KeyCode::Char('v') => linear[3] = -1.0,
+                    KeyCode::Char('b') => linear[4] = -1.0,
+                    KeyCode::Char('n') => linear[5] = -1.0,
+                    KeyCode::Esc => {
+                        *cli_state = CliState::Root;
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        if joints.iter().sum::<f64>() == 0. && linear.iter().sum::<f64>() == 0. {
+            continue;
+        }
+        println!("joints: {:?}, linear: {:?}", joints, linear);
+        robot.move_joint_rel(joints)?;
+        robot.move_linear_with_euler_rel(linear)?;
+        println!("Move over");
+        stdout.flush().unwrap();
+    }
+    disable_raw_mode().unwrap();
+    Ok(())
+}
+
 #[derive(Debug, Parser, Clone)]
 #[command(no_binary_name = true)]
 enum RootCommand {
@@ -165,6 +238,7 @@ enum RootCommand {
     ))]
     Move(MoveArgs),
     MoveFromTcp,
+    KeyBoardControl,
     Version,
     Exit,
 }
