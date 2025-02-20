@@ -3,9 +3,9 @@ name = "libhans"
 version = "0.1.0"
 edition = "2024"
 
-# [lib]
-# name = "libhans"
-# crate-type = ["cdylib", "staticlib"]
+[lib]
+name = "libhans"
+crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 pyo3 = { version = "*", optional = true, features = ["extension-module"] }
@@ -34,7 +34,7 @@ robot_behavior = { path = "crates/robot_behavior" }
 
 [features]
 # default = ["no_robot"]
-default = ["to_c"]
+default = ["to_py"]
 no_robot = []
 to_c = []
 to_py = ["pyo3"]

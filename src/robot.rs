@@ -64,8 +64,13 @@ impl HansRobot {
         self.move_to(MotionType::CartesianEuler(pose))
     }
 
-    pub fn move_linear_with_euler_rel(&mut self, pose: [f64; 6]) -> HansResult<()> {
+    pub fn move_linear_rel_with_euler(&mut self, pose: [f64; 6]) -> HansResult<()> {
         self.move_rel(MotionType::CartesianEuler(pose))
+    }
+
+    pub fn set_speed(&mut self, speed: f64) -> HansResult<()> {
+        self.robot_impl.state_set_override((0, speed))?;
+        Ok(())
     }
 }
 
