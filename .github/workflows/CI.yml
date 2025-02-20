@@ -19,7 +19,7 @@ permissions:
   id-token: write
 
 jobs:
-  linux_x86_64:
+  linux:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
