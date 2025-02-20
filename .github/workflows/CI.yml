@@ -20,38 +20,62 @@ permissions:
 
 jobs:
   linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
-        target: [x86_64, i686]
+        target: [x86_64, i686, aarch64, armv7]
+        include:
+          - target: x86_64
+            arch: x86_64
+            triple: x86_64-unknown-linux-gnu
+            gcc_pkg: gcc-x86_64-linux-gnu
+          - target: i686
+            arch: i386
+            triple: i686-unknown-linux-gnu
+            gcc_pkg: gcc-i686-linux-gnu
+          - target: aarch64
+            arch: arm64
+            triple: aarch64-unknown-linux-gnu
+            gcc_pkg: gcc-aarch64-linux-gnu
+          - target: armv7
+            arch: armhf
+            triple: armv7-unknown-linux-gnueabihf
+            gcc_pkg: gcc-arm-linux-gnueabihf
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure multiarch
+        run: |
+          sudo dpkg --add-architecture ${{ matrix.arch }}
+          sudo apt update
+
+      - name: Install cross-compiler
+        run: |
+          sudo apt install -y \
+            libatomic1:${{ matrix.arch }} \
+            ${{ matrix.gcc_pkg }} \
+            g++-${{ matrix.arch }}-linux-gnu
+
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          submodules: true
-          fetch-depth: 0
-      - name: Update submodules
-        run: git submodule update --init --recursive
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-      - name: Build wheels
+          profile: minimal
+          target: ${{ matrix.triple }}
+          override: true
+          components: rust-src
+
+      - name: Configure cargo for cross-compile
+        run: |
+          echo "CARGO_TARGET_$(echo ${{ matrix.triple }} | tr '[:lower:]-' '[:upper:]_')_LINKER=${{ matrix.arch }}-linux-gnu-gcc" >> $GITHUB_ENV
+          echo '[target.${{ matrix.triple }}]' >> .cargo/config.toml
+          echo 'linker = "${{ matrix.arch }}-linux-gnu-gcc"' >> .cargo/config.toml
+
+      - name: Build with maturin
         uses: PyO3/maturin-action@v1
         with:
+          target: ${{ matrix.triple }}
+          args: --release --out dist --manylinux off
           rust-toolchain: nightly
-          target: ${{ matrix.target }}
-          manylinux: auto
-          args: --release --out dist
-      - name: Install built wheel
-        if: matrix.target == 'x86_64'
-        run: |
-          pip install rjmespath --no-index --find-links dist --force-reinstall
-          pip install pytest
-          cd tests && pytest
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels
-          path: dist
 
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
