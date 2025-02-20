@@ -19,64 +19,38 @@ permissions:
   id-token: write
 
 jobs:
-  linux:
+  linux_x86_64:
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        target: [x86_64, i686, aarch64, armv7]
-        include:
-          - target: x86_64
-            arch: amd64
-            triple: x86_64-unknown-linux-gnu
-            gcc_pkg: gcc-x86_64-linux-gnu
-          - target: i686
-            arch: i686
-            triple: i686-unknown-linux-gnu
-            gcc_pkg: gcc-i686-linux-gnu
-          - target: aarch64
-            arch: arm64
-            triple: aarch64-unknown-linux-gnu
-            gcc_pkg: gcc-aarch64-linux-gnu
-          - target: armv7
-            arch: armhf
-            triple: armv7-unknown-linux-gnueabihf
-            gcc_pkg: gcc-arm-linux-gnueabihf
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure multiarch
-        run: |
-          sudo dpkg --add-architecture ${{ matrix.arch }}
-          sudo apt update
-
-      - name: Install cross-compiler
-        run: |
-          sudo apt install -y build-essential
-          sudo apt install -y \
-            libatomic1:${{ matrix.arch }} \
-            ${{ matrix.gcc_pkg }} \
-            g++-${{ matrix.arch }}-linux-gnu
-
-      - name: Setup Rust toolchain
+      - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
-          target: ${{ matrix.triple }}
+          toolchain: stable # 使用稳定版 Rust
           override: true
-          components: rust-src
 
-      - name: Configure cargo for cross-compile
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install system dependencies
         run: |
-          echo "CARGO_TARGET_$(echo ${{ matrix.triple }} | tr '[:lower:]-' '[:upper:]_')_LINKER=${{ matrix.arch }}-linux-gnu-gcc" >> $GITHUB_ENV
-          echo '[target.${{ matrix.triple }}]' >> .cargo/config.toml
-          echo 'linker = "${{ matrix.arch }}-linux-gnu-gcc"' >> .cargo/config.toml
+          sudo apt-get update
+          sudo apt-get install -y libatomic1  # 仅安装主机架构依赖
 
       - name: Build with maturin
         uses: PyO3/maturin-action@v1
         with:
-          target: ${{ matrix.triple }}
-          args: --release --out dist --manylinux off
-          rust-toolchain: nightly
+          args: --release --out dist --manylinux 2014 # 启用标准 manylinux 兼容
+          rust-toolchain: stable
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-x86_64
+          path: dist
 
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
