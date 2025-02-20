@@ -40,7 +40,7 @@ jobs:
       - name: Build with maturin
         uses: PyO3/maturin-action@v1
         with:
-          args: --release --out dist # 启用标准 manylinux 兼容
+          args: --release --out dist --find-interpreter # 启用标准 manylinux 兼容
           rust-toolchain: nightly
 
       - name: Upload wheels
