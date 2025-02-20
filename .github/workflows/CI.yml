@@ -44,7 +44,7 @@ jobs:
       - name: Update submodules
         run: git submodule update --init --recursive
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libatomic1 && sudo apt install libatomic1
+        run: sudo apt-get update && sudo apt-get install -y gcc-multilib && yum install -y libatomic
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
