@@ -26,10 +26,14 @@ jobs:
         target: [x86_64, i686]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
         with:
-          python-version: 3.9
-          architecture: x64
+          submodules: true
+          fetch-depth: 0
+      - name: Update submodules
+        run: git submodule update --init --recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -44,7 +48,7 @@ jobs:
           pip install pytest
           cd tests && pytest
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
