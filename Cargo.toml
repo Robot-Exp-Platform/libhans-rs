@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 # [lib]
-# name = "libhans_rs"
+# name = "libhans"
 # crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-pyo3 = { version = "*", optional = true }
+pyo3 = { version = "*", optional = true, features = ["extension-module"] }
 clap = { version = "*", features = ["derive"] }
 serde_repr = "*"
 serde = { version = "1.0", features = ["derive"] }
@@ -24,6 +24,7 @@ bincode = "*"
 inventory = "*"
 colored = "*"
 cxx = { version = "*", optional = true }
+crossterm = "*"
 
 # [build-dependencies]
 # cxx-build = "*"
