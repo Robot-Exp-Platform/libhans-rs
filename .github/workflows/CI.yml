@@ -26,72 +26,34 @@ jobs:
         platform:
           - runner: ubuntu-22.04
             target: x86_64
-            arch: amd64
-            multiarch: false # x86_64 不需要多架构支持
           - runner: ubuntu-22.04
             target: x86
-            arch: i386
-            multiarch: true
           - runner: ubuntu-22.04
             target: aarch64
-            arch: arm64
-            multiarch: true
           - runner: ubuntu-22.04
             target: armv7
-            arch: armhf
-            multiarch: true
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 0
-
       - name: Update submodules
         run: git submodule update --init --recursive
-
-      - name: Configure multiarch
-        if: matrix.platform.multiarch
-        run: |
-          sudo dpkg --add-architecture ${{ matrix.platform.arch }}
-          sudo apt-get update
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get install -y \
-            libatomic1:${{ matrix.platform.arch }} \
-            gcc-${{ matrix.platform.arch }}-linux-gnu \  # 安装交叉编译器
-            g++-${{ matrix.platform.arch }}-linux-gnu
-
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          target: ${{ matrix.platform.target }}
-          override: true
-          components: rust-src
-
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
-
+          python-version: 3.x
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
-          args: |
-            --release \
-            --out dist \
-            --find-interpreter \
-            --manylinux off \
-            --target ${{ matrix.platform.target }}  # 显式指定目标
+          args: --release --out dist --find-interpreter
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          manylinux: off
           rust-toolchain: nightly
-
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-linux-${{ matrix.platform.target }}
-          path: dist
 
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
