@@ -27,16 +27,19 @@ jobs:
           - runner: ubuntu-22.04
             target: x86_64
             arch: amd64
+            multiarch: false # x86_64 不需要多架构支持
           - runner: ubuntu-22.04
-            target: x86 # 对应 i686
+            target: x86
             arch: i386
+            multiarch: true
           - runner: ubuntu-22.04
             target: aarch64
             arch: arm64
+            multiarch: true
           - runner: ubuntu-22.04
             target: armv7
             arch: armhf
-          # 移除 s390x 和 ppc64le 等不常用架构（可选）
+            multiarch: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,13 +49,18 @@ jobs:
       - name: Update submodules
         run: git submodule update --init --recursive
 
-      - name: Install multiarch dependencies
+      - name: Configure multiarch
+        if: matrix.platform.multiarch
         run: |
+          sudo dpkg --add-architecture ${{ matrix.platform.arch }}
           sudo apt-get update
+
+      - name: Install dependencies
+        run: |
           sudo apt-get install -y \
             libatomic1:${{ matrix.platform.arch }} \
-            gcc-multilib \
-            g++-multilib
+            gcc-${{ matrix.platform.arch }}-linux-gnu \  # 安装交叉编译器
+            g++-${{ matrix.platform.arch }}-linux-gnu
 
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -74,7 +82,8 @@ jobs:
             --release \
             --out dist \
             --find-interpreter \
-            --manylinux off  # 显式禁用自动 manylinux 检测
+            --manylinux off \
+            --target ${{ matrix.platform.target }}  # 显式指定目标
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
           rust-toolchain: nightly
 
