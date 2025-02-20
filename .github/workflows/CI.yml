@@ -43,6 +43,8 @@ jobs:
           fetch-depth: 0
       - name: Update submodules
         run: git submodule update --init --recursive
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libatomic1
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
