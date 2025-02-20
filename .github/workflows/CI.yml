@@ -45,6 +45,11 @@ jobs:
         run: git submodule update --init --recursive
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y libatomic1
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
