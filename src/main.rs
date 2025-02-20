@@ -46,7 +46,7 @@ fn main() {
         let result = match cli_state {
             CliState::Root => cli_root(&mut cli_state, &mut robot, &input),
             CliState::RobotImpl => cli_robot_impl(&mut cli_state, &mut robot, &input, &command_map),
-            CliState::KeyBoard => cli_key_board(&mut cli_state, &mut robot),
+            CliState::KeyBoard => cli_key_board(&mut cli_state, &mut robot, &input),
         };
 
         if let Err(e) = result {
@@ -110,6 +110,7 @@ fn cli_root(
             tcp.read_exact(&mut buffer).unwrap();
             let linear: [f64; 6] = unsafe { std::ptr::read(buffer.as_ptr() as *const [f64; 6]) };
             robot.move_linear_with_euler(linear)?;
+            tcp.write_all(b"ok").unwrap();
             println!("Moved linear to {:?}", linear);
         }
         RootCommand::KeyBoardControl => {
@@ -157,8 +158,13 @@ fn cli_robot_impl(
     Ok(())
 }
 
-fn cli_key_board(cli_state: &mut CliState, robot: &mut HansRobot) -> Result<(), RobotException> {
-    robot.robot_impl.state_set_override((0, 0.3))?;
+fn cli_key_board(
+    cli_state: &mut CliState,
+    robot: &mut HansRobot,
+    input: &str,
+) -> Result<(), RobotException> {
+    let input_value = f64::from_str(input)?;
+    robot.robot_impl.state_set_override((0, input_value))?;
     enable_raw_mode().unwrap();
     let mut stdout = io::stdout();
     println!("Press ESC to exit.");
