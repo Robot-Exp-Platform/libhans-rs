@@ -85,6 +85,10 @@ fn cli_root(
         RootCommand::RobotImpl => {
             *cli_state = CliState::RobotImpl;
         }
+        RootCommand::SetSpeed(args) => {
+            robot.robot_impl.state_set_override((0, args.speed))?;
+            println!("Set speed to {}", args.speed);
+        }
         RootCommand::Move(args) => match (args.relative, args.joints, args.linear) {
             (true, Some(joints), None) => {
                 robot.move_joint_rel(joints)?;
@@ -163,8 +167,13 @@ fn cli_key_board(
     robot: &mut HansRobot,
     input: &str,
 ) -> Result<(), RobotException> {
-    let input_value = f64::from_str(input)?;
-    robot.robot_impl.state_set_override((0, input_value))?;
+    if let Ok(input) = input.trim().parse::<f64>() {
+        robot.robot_impl.state_set_override((0, input))?;
+    } else {
+        *cli_state = CliState::Root;
+        println!("Invalid input,excetp f64");
+        return Ok(());
+    }
     enable_raw_mode().unwrap();
     let mut stdout = io::stdout();
     println!("Press ESC to exit.");
@@ -242,6 +251,7 @@ enum RootCommand {
             .required(true)
             .args(&["joints", "linear"]),
     ))]
+    SetSpeed(SetSpeedArgs),
     Move(MoveArgs),
     MoveFromTcp,
     KeyBoardControl,
@@ -256,6 +266,11 @@ struct ConnectArgs {
 
     #[arg(short, long, default_value_t = PORT_IF)]
     port: u16,
+}
+
+#[derive(Debug, Parser, Clone)]
+struct SetSpeedArgs {
+    speed: f64,
 }
 
 #[derive(Debug, Args, Clone)]
