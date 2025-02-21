@@ -4,7 +4,7 @@ use pyo3::{
     pyclass, pymethods, pymodule,
     types::{PyModule, PyModuleMethods},
 };
-use robot_behavior::{RobotBehavior, RobotException};
+use robot_behavior::{ArmBehavior, MotionType, RobotBehavior, RobotException};
 
 use crate::{HANS_DOF, HansRobot};
 
@@ -69,6 +69,39 @@ impl PyHansRobot {
     #[pyo3(text_signature = "(pose_rel)")]
     fn move_linear_rel_with_euler(&mut self, pose: [f64; 6]) -> PyResult<()> {
         self.0.move_linear_rel_with_euler(pose).map_err(map_err)
+    }
+
+    /// 以关节坐标移动连续轨迹
+    /// args:
+    ///  joints: List[List[float]], 机器人的关节角度
+    fn move_joint_path(&mut self, joints: Vec<[f64; HANS_DOF]>) -> PyResult<()> {
+        let joints = joints.into_iter().map(|j| MotionType::Joint(j)).collect();
+        self.0.move_path(joints).map_err(map_err)
+    }
+
+    /// 从文件中读取，并以关节坐标移动连续轨迹
+    /// args:n
+    ///   path: str, 文件路径
+    fn move_joint_path_from_file(&mut self, path: &str) -> PyResult<()> {
+        self.0.move_path_from_file(path).map_err(map_err)
+    }
+
+    /// 以笛卡尔坐标移动连续轨迹
+    /// args:
+    ///   poses: List[List[float]], 机器人的笛卡尔坐标，其中前三个元素为位置，后三个元素为欧拉角
+    fn move_linear_path_with_euler(&mut self, poses: Vec<[f64; 6]>) -> PyResult<()> {
+        let poses = poses
+            .into_iter()
+            .map(|p| MotionType::CartesianEuler(p))
+            .collect();
+        self.0.move_path(poses).map_err(map_err)
+    }
+
+    /// 从文件中读取，并以笛卡尔坐标移动连续轨迹
+    /// args:
+    ///   path: str, 文件路径
+    fn move_linear_path_with_euler_from_file(&mut self, path: &str) -> PyResult<()> {
+        self.0.move_path_from_file(path).map_err(map_err)
     }
 
     /// 设置运动速度

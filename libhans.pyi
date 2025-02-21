@@ -34,6 +34,20 @@ class HansRobot:
             joint_rel: 相对关节角度列表（长度必须为 HANS_DOF）
         """
         ...
+    
+    def move_joint_path(self, joints: List[List[float]]) -> None:
+        """以关节角度方式移动机器人
+        Args:
+            joints: 关节角度列表
+        """
+        ...
+        
+    def move_joint_path_from_file(self, path: str) -> None:
+        """从文件中读取关节角度路径并执行
+        Args:
+            path: 文件路径
+        """
+        ...
 
     def move_linear_with_euler(self, pose: List[float]) -> None:
         """以笛卡尔坐标系（欧拉角）移动机器人
@@ -46,6 +60,20 @@ class HansRobot:
         """以笛卡尔坐标系（欧拉角）相对移动机器人
         Args:
             pose_rel: 相对位姿列表 [dx, dy, dz, drx, dry, drz]
+        """
+        ...
+    
+    def move_linear_path_with_euler(self, pose: List[List[float]]) -> None:
+        """以笛卡尔坐标系（欧拉角）移动机器人
+        Args:
+            pose: 位姿列表 [[x, y, z, rx, ry, rz], ...]
+        """
+        ...
+        
+    def move_linear_path_with_euler_from_file(self, path: str) -> None:
+        """从文件中读取笛卡尔坐标系（欧拉角）路径并执行
+        Args:
+            path: 文件路径
         """
         ...
 
