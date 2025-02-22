@@ -1,5 +1,7 @@
 use nalgebra as na;
-use robot_behavior::{ArmBehavior, ControlType, MotionType, RobotBehavior, RobotException};
+use robot_behavior::{
+    ArmBehavior, ArmState, ArmStateType, ControlType, MotionType, RobotBehavior, RobotException,
+};
 
 use crate::{
     HANS_DOF, HANS_VERSION, HansResult, RobotMode,
@@ -37,8 +39,16 @@ impl HansRobot {
         self.move_to(MotionType::Joint(joints))
     }
 
+    pub fn move_joint_async(&mut self, joints: [f64; HANS_DOF]) -> HansResult<()> {
+        self.move_to_async(MotionType::Joint(joints))
+    }
+
     pub fn move_joint_rel(&mut self, joints: [f64; HANS_DOF]) -> HansResult<()> {
         self.move_rel(MotionType::Joint(joints))
+    }
+
+    pub fn move_joint_rel_async(&mut self, joints: [f64; HANS_DOF]) -> HansResult<()> {
+        self.move_rel_async(MotionType::Joint(joints))
     }
 
     pub fn move_linear_with_quaternion(
@@ -64,13 +74,61 @@ impl HansRobot {
         self.move_to(MotionType::CartesianEuler(pose))
     }
 
+    pub fn move_linear_with_euler_async(&mut self, pose: [f64; 6]) -> HansResult<()> {
+        self.move_to_async(MotionType::CartesianEuler(pose))
+    }
+
     pub fn move_linear_rel_with_euler(&mut self, pose: [f64; 6]) -> HansResult<()> {
         self.move_rel(MotionType::CartesianEuler(pose))
+    }
+
+    pub fn move_linear_rel_with_euler_async(&mut self, pose: [f64; 6]) -> HansResult<()> {
+        self.move_rel_async(MotionType::CartesianEuler(pose))
     }
 
     pub fn set_speed(&mut self, speed: f64) -> HansResult<()> {
         self.robot_impl.state_set_override((0, speed))?;
         Ok(())
+    }
+
+    pub fn read_joint(&mut self) -> HansResult<[f64; HANS_DOF]> {
+        if let ArmState::Joint(joint) = self.read_state(ArmStateType::Joint)? {
+            Ok(joint)
+        } else {
+            Err(RobotException::UnprocessableInstructionError(
+                "Invalid state".into(),
+            ))
+        }
+    }
+
+    pub fn read_joint_vel(&mut self) -> HansResult<[f64; HANS_DOF]> {
+        if let ArmState::JointVel(joint_vel) = self.read_state(ArmStateType::JointVel)? {
+            Ok(joint_vel)
+        } else {
+            Err(RobotException::UnprocessableInstructionError(
+                "Invalid state".into(),
+            ))
+        }
+    }
+
+    pub fn read_cartesian_euler(&mut self) -> HansResult<[f64; 6]> {
+        if let ArmState::CartesianEuler(pose) = self.read_state(ArmStateType::CartesianEuler)? {
+            Ok(pose)
+        } else {
+            Err(RobotException::UnprocessableInstructionError(
+                "Invalid state".into(),
+            ))
+        }
+    }
+
+    pub fn read_cartesian_vel(&mut self) -> HansResult<[f64; 6]> {
+        if let ArmState::CartesianVel(pose_vel) = self.read_state(ArmStateType::CartesianVel)? {
+            Ok(pose_vel)
+        } else {
+            Err(RobotException::UnprocessableInstructionError(
+                "Invalid state".into(),
+            ))
+        }
     }
 }
 
@@ -120,6 +178,11 @@ impl RobotBehavior for HansRobot {
 
     fn stop(&mut self) -> HansResult<()> {
         self.robot_impl.robot_move_stop(0)?;
+        Ok(())
+    }
+
+    fn pause(&mut self) -> HansResult<()> {
+        self.robot_impl.robot_move_pause(0)?;
         Ok(())
     }
 
@@ -316,5 +379,33 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
 
     fn control_with(&mut self, _: ControlType<HANS_DOF>) -> HansResult<()> {
         unimplemented!("control_with is not implemented")
+    }
+
+    fn read_state(&mut self, state_type: ArmStateType) -> HansResult<ArmState<HANS_DOF>> {
+        let state = match state_type {
+            ArmStateType::Joint => {
+                let joint = self.robot_impl.state_read_act_pos(0).unwrap().joint;
+                ArmState::Joint(joint)
+            }
+            ArmStateType::JointVel => {
+                let joint_vel = self.robot_impl.state_read_act_joint_vel(0).unwrap();
+                ArmState::JointVel(joint_vel)
+            }
+            ArmStateType::CartesianEuler => {
+                let pose = self.robot_impl.state_read_act_pos(0).unwrap().pose_o_to_ee;
+                ArmState::CartesianEuler(pose)
+            }
+            ArmStateType::CartesianVel => {
+                let pose_vel = self.robot_impl.state_read_act_tcp_vel(0).unwrap();
+                ArmState::CartesianVel(pose_vel)
+            }
+            _ => {
+                return Err(RobotException::UnprocessableInstructionError(
+                    "Unsupported state type".into(),
+                ));
+            }
+        };
+
+        Ok(state)
     }
 }

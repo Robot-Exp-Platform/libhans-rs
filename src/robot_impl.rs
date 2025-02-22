@@ -182,7 +182,7 @@ impl RobotImpl {
     cmd_fn!(state_read_act_tcp_vel, ReadActTcpVelRequest, ReadActTcpVelResponse; id: u8; [f64; 6]);
     cmd_fn!(state_read_cmd_joint_cur, ReadCmdJointCurRequest, ReadCmdJointCurResponse; id: u8; [f64;HANS_DOF]);
     cmd_fn!(state_read_act_joint_cur, ReadActJointCurRequest, ReadActJointCurResponse; id: u8; [f64;HANS_DOF]);
-    cmd_fn!(state_read_tcp_velocity, ReadTcpVelocityRequest, ReadTcpVelocityResponse; id: u8; (f64,f64));
+    cmd_fn!(state_read_tcp_vel, ReadTcpVelocityRequest, ReadTcpVelocityResponse; id: u8; (f64,f64));
 
     // ! 坐标系读写指令
     cmd_fn!(set_pose_o_to_t, SetCurTCPRequest, SetCurTCPResponse; id_pose: (u8,[f64;6]));
@@ -289,7 +289,7 @@ submit!(
     state_read_act_tcp_vel,
     state_read_cmd_joint_cur,
     state_read_act_joint_cur,
-    state_read_tcp_velocity
+    state_read_tcp_vel
 );
 submit!(
     set_pose_o_to_t,

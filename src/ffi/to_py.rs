@@ -47,12 +47,28 @@ impl PyHansRobot {
         self.0.move_joint(joint).map_err(map_err)
     }
 
+    /// 以关节角度的方式异步移动机器人
+    /// args:
+    ///   joint: List[float], 机器人的关节角度
+    #[pyo3(text_signature = "(joint)")]
+    fn move_joint_async(&mut self, joint: [f64; HANS_DOF]) -> PyResult<()> {
+        self.0.move_joint_async(joint).map_err(map_err)
+    }
+
     /// 以关节角度的方式相对移动机器人
     /// args:
     ///    joint: List[float], 机器人的关节角度
     #[pyo3(text_signature = "(joint_rel)")]
     fn move_joint_rel(&mut self, joint: [f64; HANS_DOF]) -> PyResult<()> {
         self.0.move_joint_rel(joint).map_err(map_err)
+    }
+
+    /// 以关节角度的方式异步相对移动机器人
+    /// args:
+    ///  joint: List[float], 机器人的关节角度
+    #[pyo3(text_signature = "(joint_rel)")]
+    fn move_joint_rel_async(&mut self, joint: [f64; HANS_DOF]) -> PyResult<()> {
+        self.0.move_joint_rel_async(joint).map_err(map_err)
     }
 
     /// 以笛卡尔坐标的方式移动机器人
@@ -63,12 +79,30 @@ impl PyHansRobot {
         self.0.move_linear_with_euler(pose).map_err(map_err)
     }
 
+    /// 以笛卡尔坐标的方式异步移动机器人
+    /// args:
+    ///  pose: List[float], 机器人的笛卡尔坐标，其中前三个元素为位置，后三个元素为欧拉角
+    #[pyo3(text_signature = "(pose)")]
+    fn move_linear_with_euler_async(&mut self, pose: [f64; 6]) -> PyResult<()> {
+        self.0.move_linear_with_euler_async(pose).map_err(map_err)
+    }
+
     /// 以笛卡尔坐标的方式相对移动机器人
     /// args:
     ///  pose: List[float], 机器人的笛卡尔坐标，其中前三个元素为位置，后三个元素为欧拉角
     #[pyo3(text_signature = "(pose_rel)")]
     fn move_linear_rel_with_euler(&mut self, pose: [f64; 6]) -> PyResult<()> {
         self.0.move_linear_rel_with_euler(pose).map_err(map_err)
+    }
+
+    /// 以笛卡尔坐标的方式异步相对移动机器人
+    /// args:
+    ///  pose: List[float], 机器人的笛卡尔坐标，其中前三个元素为位置，后三个元素为欧拉角
+    #[pyo3(text_signature = "(pose_rel)")]
+    fn move_linear_rel_with_euler_async(&mut self, pose: [f64; 6]) -> PyResult<()> {
+        self.0
+            .move_linear_rel_with_euler_async(pose)
+            .map_err(map_err)
     }
 
     /// 以关节坐标移动连续轨迹
@@ -102,6 +136,34 @@ impl PyHansRobot {
     ///   path: str, 文件路径
     fn move_linear_path_with_euler_from_file(&mut self, path: &str) -> PyResult<()> {
         self.0.move_path_from_file(path).map_err(map_err)
+    }
+
+    /// 获取机器人的关节角度
+    /// return:
+    ///   List[float], 机器人的关节角度
+    fn read_joint(&mut self) -> PyResult<[f64; HANS_DOF]> {
+        self.0.read_joint().map_err(map_err)
+    }
+
+    /// 获取机器人的关节速度
+    /// return:
+    ///  List[float], 机器人的关节速度
+    fn read_joint_vel(&mut self) -> PyResult<[f64; HANS_DOF]> {
+        self.0.read_joint_vel().map_err(map_err)
+    }
+
+    /// 获取机器人的笛卡尔坐标
+    /// return:
+    ///  List[float], 机器人的笛卡尔坐标，其中前三个元素为位置，后三个元素为欧拉角
+    fn read_cartesian_euler(&mut self) -> PyResult<[f64; 6]> {
+        self.0.read_cartesian_euler().map_err(map_err)
+    }
+
+    /// 获取机器人的笛卡尔速度
+    /// return:
+    ///  List[float], 机器人的笛卡尔速度
+    fn read_cartesian_vel(&mut self) -> PyResult<[f64; 6]> {
+        self.0.read_cartesian_vel().map_err(map_err)
     }
 
     /// 设置运动速度

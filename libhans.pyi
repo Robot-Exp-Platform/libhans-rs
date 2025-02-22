@@ -27,9 +27,23 @@ class HansRobot:
             joint: 关节角度列表（长度必须为 HANS_DOF）
         """
         ...
+        
+    def move_joint_async(self, joint: List[float]) -> None:
+        """以关节角度方式异步移动机器人
+        Args:
+            joint: 关节角度列表（长度必须为 HANS_DOF）
+        """
+        ...
 
     def move_joint_rel(self, joint_rel: List[float]) -> None:
         """以关节角度方式相对移动机器人
+        Args:
+            joint_rel: 相对关节角度列表（长度必须为 HANS_DOF）
+        """
+        ...
+        
+    def move_joint_rel_async(self, joint_rel: List[float]) -> None:
+        """以关节角度方式异步相对移动机器人
         Args:
             joint_rel: 相对关节角度列表（长度必须为 HANS_DOF）
         """
@@ -55,9 +69,23 @@ class HansRobot:
             pose: 位姿列表 [x, y, z, rx, ry, rz]
         """
         ...
+        
+    def move_linear_with_euler_async(self, pose: List[float]) -> None:
+        """以笛卡尔坐标系（欧拉角）异步移动机器人
+        Args:
+            pose: 位姿列表 [x, y, z, rx, ry, rz]
+        """
+        ...
 
     def move_linear_rel_with_euler(self, pose_rel: List[float]) -> None:
         """以笛卡尔坐标系（欧拉角）相对移动机器人
+        Args:
+            pose_rel: 相对位姿列表 [dx, dy, dz, drx, dry, drz]
+        """
+        ...
+        
+    def move_linear_rel_with_euler_async(self, pose_rel: List[float]) -> None:
+        """以笛卡尔坐标系（欧拉角）异步相对移动机器人
         Args:
             pose_rel: 相对位姿列表 [dx, dy, dz, drx, dry, drz]
         """
@@ -81,6 +109,34 @@ class HansRobot:
         """设置运动速度
         Args:
             speed: 速度系数（0.0~1.0）
+        """
+        ...
+        
+    def read_joint(self) -> List[float]:
+        """读取机器人关节角度
+        Returns:
+            关节角度列表
+        """
+        ...
+        
+    def read_joint_vel(self) -> List[float]:
+        """读取机器人关节速度
+        Returns:
+            关节速度列表
+        """
+        ...
+    
+    def read_cartesian_euler(self) -> List[float]:
+        """读取机器人笛卡尔坐标系（欧拉角）
+        Returns:
+            位姿列表 [x, y, z, rx, ry, rz]
+        """
+        ...
+        
+    def read_cartesian_vel(self) -> List[float]:
+        """读取机器人笛卡尔坐标系速度
+        Returns:
+            速度列表 [vx, vy, vz, wx, wy, wz]
         """
         ...
 
