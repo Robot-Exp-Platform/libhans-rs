@@ -88,8 +88,8 @@ pub struct RobotFlag {
 
 #[derive(Default, command_derive::CommandSerde)]
 pub struct ActPose {
-    joint: [f64; HANS_DOF],
-    pose_o_to_ee: [f64; 6],
+    pub joint: [f64; HANS_DOF],
+    pub pose_o_to_ee: [f64; 6],
     pose_f_to_ee: [f64; 6],
     pose_u_to_ee: [f64; 6],
 }

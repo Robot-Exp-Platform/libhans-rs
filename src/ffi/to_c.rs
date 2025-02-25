@@ -1,4 +1,3 @@
-
 use std::ffi::{CStr, CString, c_char};
 
 use robot_behavior::{
@@ -74,7 +73,7 @@ extern "C" fn hans_move_linear_with_euler_rel(robot: *mut CHansRobot, pose: *con
     let pose = unsafe { std::slice::from_raw_parts(pose, 6) };
     let pose_array: [f64; 6] = pose.try_into().expect("slice with incorrect length");
     unsafe { robot.as_mut().unwrap() }
-        .move_linear_with_euler_rel(pose_array)
+        .move_linear_rel_with_euler(pose_array)
         .unwrap();
 }
 
