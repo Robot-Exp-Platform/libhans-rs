@@ -2,6 +2,7 @@ use super::command::{Command, CommandRequest, CommandResponse};
 use super::command_serde::CommandSerde;
 use crate::HansResult;
 use crate::robot_error::RobotError;
+use robot_behavior::RobotException;
 
 pub type ReadBoxInfoRequest = CommandRequest<{ Command::ReadBoxInfo }, u8>;
 pub type ReadBoxCIRequest<const N: usize> = CommandRequest<{ Command::ReadBoxCI }, [bool; N]>;
