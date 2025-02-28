@@ -1,3 +1,5 @@
+use robot_behavior::RobotException;
+
 use super::command::{Command, CommandRequest, CommandResponse};
 use super::command_serde::CommandSerde;
 use crate::HansResult;
@@ -56,13 +58,13 @@ pub type ReadCmdJointCurResponse = CommandResponse<{ Command::ReadCmdJointCur },
 pub type ReadActJointCurResponse = CommandResponse<{ Command::ReadActJointCur }, [f64; HANS_DOF]>;
 pub type ReadTcpVelocityResponse = CommandResponse<{ Command::ReadTcpVelocity }, (f64, f64)>;
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
 pub struct Load {
     pub mass: f64,
     pub centroid: [f64; 3],
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
 pub struct EmergencyInfo {
     pub is_estop: bool,
     pub esto_code: u8,
@@ -70,7 +72,7 @@ pub struct EmergencyInfo {
     pub safety_guard_code: u8,
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
 pub struct RobotFlag {
     pub is_move: bool,
     pub is_enable: bool,
@@ -86,15 +88,15 @@ pub struct RobotFlag {
     pub is_arrived: bool,
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
 pub struct ActPose {
-    joint: [f64; HANS_DOF],
-    pose_o_to_ee: [f64; 6],
+    pub joint: [f64; HANS_DOF],
+    pub pose_o_to_ee: [f64; 6],
     pose_f_to_ee: [f64; 6],
     pose_u_to_ee: [f64; 6],
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
 pub struct CmdPose {
     joint: [f64; HANS_DOF],
     pose_o_to_ee: [f64; 6],
@@ -109,6 +111,7 @@ mod tests {
         let load = Load::default();
         let load_str = "0,0,0,0";
         assert_eq!(load.to_string(), load_str);
+        assert_eq!(Load::from_str(load_str).unwrap(), load);
     }
 
     #[test]
@@ -116,6 +119,10 @@ mod tests {
         let emergency_info = EmergencyInfo::default();
         let emergency_info_str = "0,0,0,0";
         assert_eq!(emergency_info.to_string(), emergency_info_str);
+        assert_eq!(
+            EmergencyInfo::from_str(emergency_info_str).unwrap(),
+            emergency_info
+        );
     }
 
     #[test]
@@ -123,5 +130,22 @@ mod tests {
         let robot_flag = RobotFlag::default();
         let robot_flag_str = "0,0,0,0,0,0,0,0,0,0,0,0";
         assert_eq!(robot_flag.to_string(), robot_flag_str);
+        assert_eq!(RobotFlag::from_str(robot_flag_str).unwrap(), robot_flag);
+    }
+
+    #[test]
+    fn test_act_pose_serde() {
+        let act_pose = ActPose::default();
+        let act_pose_str = ["0"; 24].join(",");
+        assert_eq!(act_pose.to_string(), act_pose_str);
+        assert_eq!(ActPose::from_str(&act_pose_str).unwrap(), act_pose);
+    }
+
+    #[test]
+    fn test_cmd_pose_serde() {
+        let cmd_pose = CmdPose::default();
+        let cmd_pose_str = ["0"; 12].join(",");
+        assert_eq!(cmd_pose.to_string(), cmd_pose_str);
+        assert_eq!(CmdPose::from_str(&cmd_pose_str).unwrap(), cmd_pose);
     }
 }

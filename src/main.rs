@@ -95,7 +95,7 @@ fn cli_root(
                 println!("Moved joints for {:?}", joints);
             }
             (true, None, Some(linear)) => {
-                robot.move_linear_with_euler_rel(linear)?;
+                robot.move_linear_rel_with_euler(linear)?;
                 println!("Moved linear for {:?}", linear);
             }
             (false, Some(joints), None) => {
@@ -228,7 +228,7 @@ fn cli_key_board(
         }
         println!("joints: {:?}, linear: {:?}", joints, linear);
         robot.move_joint_rel(joints)?;
-        robot.move_linear_with_euler_rel(linear)?;
+        robot.move_linear_rel_with_euler(linear)?;
         println!("Move over");
         stdout.flush().unwrap();
     }

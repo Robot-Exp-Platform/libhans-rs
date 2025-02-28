@@ -1,3 +1,5 @@
+use robot_behavior::RobotException;
+
 use super::command::{Command, CommandRequest, CommandResponse};
 use super::command_serde::CommandSerde;
 use crate::HansResult;
