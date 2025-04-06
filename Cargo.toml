@@ -1,3 +1,7 @@
+[workspace]
+members = ["src/command_derive"]
+
+
 [package]
 name = "libhans"
 version = "0.1.3"
