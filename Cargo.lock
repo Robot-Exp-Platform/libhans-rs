@@ -719,6 +719,7 @@ dependencies = [
  "bincode",
  "bitflags 2.9.0",
  "colored",
+ "command_derive",
  "crossterm",
  "cxx",
  "inventory",
