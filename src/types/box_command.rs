@@ -36,7 +36,7 @@ pub type ReadEIResponse<const N: usize> = CommandResponse<{ Command::ReadEI }, [
 pub type ReadEOResponse<const N: usize> = CommandResponse<{ Command::ReadEO }, [bool; N]>;
 pub type ReadEAIResponse = CommandResponse<{ Command::ReadEAI }, f64>;
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct BoxInfo {
     is_connected: bool,
     is_voltage48v_on: bool,

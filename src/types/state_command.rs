@@ -58,13 +58,13 @@ pub type ReadCmdJointCurResponse = CommandResponse<{ Command::ReadCmdJointCur },
 pub type ReadActJointCurResponse = CommandResponse<{ Command::ReadActJointCur }, [f64; HANS_DOF]>;
 pub type ReadTcpVelocityResponse = CommandResponse<{ Command::ReadTcpVelocity }, (f64, f64)>;
 
-#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
+#[derive(Default, libhans_derive::CommandSerde, Debug, PartialEq)]
 pub struct Load {
     pub mass: f64,
     pub centroid: [f64; 3],
 }
 
-#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
+#[derive(Default, libhans_derive::CommandSerde, Debug, PartialEq)]
 pub struct EmergencyInfo {
     pub is_estop: bool,
     pub esto_code: u8,
@@ -72,7 +72,7 @@ pub struct EmergencyInfo {
     pub safety_guard_code: u8,
 }
 
-#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
+#[derive(Default, libhans_derive::CommandSerde, Debug, PartialEq)]
 pub struct RobotFlag {
     pub is_move: bool,
     pub is_enable: bool,
@@ -88,7 +88,7 @@ pub struct RobotFlag {
     pub is_arrived: bool,
 }
 
-#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
+#[derive(Default, libhans_derive::CommandSerde, Debug, PartialEq)]
 pub struct ActPose {
     pub joint: [f64; HANS_DOF],
     pub pose_o_to_ee: [f64; 6],
@@ -96,7 +96,7 @@ pub struct ActPose {
     pose_u_to_ee: [f64; 6],
 }
 
-#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
+#[derive(Default, libhans_derive::CommandSerde, Debug, PartialEq)]
 pub struct CmdPose {
     joint: [f64; HANS_DOF],
     pose_o_to_ee: [f64; 6],

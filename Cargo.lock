@@ -171,14 +171,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "command_derive"
-version = "0.1.0"
-dependencies = [
- "quote",
- "syn",
-]
-
-[[package]]
 name = "convert_case"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -719,10 +711,10 @@ dependencies = [
  "bincode",
  "bitflags 2.9.0",
  "colored",
- "command_derive",
  "crossterm",
  "cxx",
  "inventory",
+ "libhans_derive",
  "nalgebra",
  "num-derive",
  "num-traits",
@@ -734,6 +726,14 @@ dependencies = [
  "serde_repr",
  "serde_with",
  "thiserror 2.0.11",
+]
+
+[[package]]
+name = "libhans_derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]
