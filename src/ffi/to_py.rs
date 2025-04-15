@@ -25,16 +25,18 @@ impl PyHansRobot {
         self.robot.disconnect()
     }
 
-    fn move_joint(&mut self, joint: [f64; HANS_DOF]) -> PyResult<()> {
-        self.robot.move_joint(joint).map_err(map_err)
+    fn move_joint(&mut self, joint: [f64; HANS_DOF], speed: f64) -> PyResult<()> {
+        self.robot.move_joint(joint, speed).map_err(map_err)
     }
 
     fn move_joint_rel(&mut self, joint: [f64; HANS_DOF]) -> PyResult<()> {
         self.robot.move_joint_rel(joint).map_err(map_err)
     }
 
-    fn move_linear_with_euler(&mut self, pose: [f64; 6]) -> PyResult<()> {
-        self.robot.move_linear_with_euler(pose).map_err(map_err)
+    fn move_linear_with_euler(&mut self, pose: [f64; 6], speed: f64) -> PyResult<()> {
+        self.robot
+            .move_linear_with_euler(pose, speed)
+            .map_err(map_err)
     }
 
     fn move_linear_with_euler_rel(&mut self, pose: [f64; 6]) -> PyResult<()> {

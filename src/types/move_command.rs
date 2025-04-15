@@ -1,8 +1,7 @@
-use robot_behavior::RobotException;
+use robot_behavior::{RobotException, RobotResult};
 
 use super::command::{Command, CommandRequest, CommandResponse};
 use super::command_serde::CommandSerde;
-use crate::HansResult;
 use crate::robot_error::RobotError;
 use crate::robot_param::HANS_DOF;
 
@@ -236,14 +235,14 @@ impl<const N: usize> CommandSerde for MovePaths<N> {
         .join(",")
     }
 
-    fn from_str(data: &str) -> HansResult<Self> {
+    fn from_str(data: &str) -> RobotResult<Self> {
         let mut iter = data.split(',');
         let path_name = CommandSerde::from_str(iter.next().unwrap())?;
         let move_mode = CommandSerde::from_str(iter.next().unwrap())?;
         let _: u16 = CommandSerde::from_str(iter.next().unwrap())?;
         let mut points = [[0.0; 6]; N];
-        for i in 0..N {
-            points[i] = CommandSerde::from_str(iter.next().unwrap())?;
+        for point in points.iter_mut().take(N) {
+            *point = CommandSerde::from_str(iter.next().unwrap())?;
         }
         Ok(MovePaths {
             path_name,

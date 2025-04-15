@@ -1,7 +1,7 @@
 #[cfg(feature = "to_cxx")]
 pub mod to_cxx {
-    use crate::HansResult;
     use crate::HansRobot;
+    use crate::RobotResult;
     use robot_behavior::{ArmBehavior, RobotBehavior};
 
     #[cxx::bridge]
@@ -40,7 +40,7 @@ pub mod to_cxx {
 
     macro_rules! impl_behavior {
     (fn $name:ident) => {
-        fn $name(se: &mut HansRobot) -> HansResult<()> {
+        fn $name(se: &mut HansRobot) -> RobotResult<()> {
             se.$name()
         }
     };
@@ -50,7 +50,7 @@ pub mod to_cxx {
         }
     };
     (fn $name:ident($($arg:ident: $ty:ty),*)) => {
-        fn $name(se: &mut HansRobot, $($arg: $ty),*) -> HansResult<()> {
+        fn $name(se: &mut HansRobot, $($arg: $ty),*) -> RobotResult<()> {
             se.$name($($arg),*)
         }
     };

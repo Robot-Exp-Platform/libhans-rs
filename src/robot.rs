@@ -1,12 +1,13 @@
 use robot_behavior::{
-    ArmBehavior, ArmBehaviorExt, ArmState, ControlType, MotionType, Pose, RobotBehavior,
-    RobotException,
+    ArmBehavior, ArmPreplannedMotion, ArmPreplannedMotionExt, ArmState, ControlType, LoadState,
+    MotionType, Pose, RobotBehavior, RobotException, RobotResult,
 };
 
 use crate::{
-    HANS_DOF, HANS_VERSION, HansResult, RobotMode,
+    HANS_DOF, HANS_VERSION, RobotMode,
     robot_impl::RobotImpl,
-    types::{RelJ, RelL, StartPushMovePathJ, StartPushMovePathL, WayPointEx},
+    robot_state::RobotState,
+    types::{Load, RelJ, RelL, StartPushMovePathJ, StartPushMovePathL, WayPointEx},
 };
 
 #[derive(Default)]
@@ -35,7 +36,7 @@ impl HansRobot {
         self.robot_impl.disconnect();
     }
 
-    pub fn set_speed(&mut self, speed: f64) -> HansResult<()> {
+    pub fn set_speed(&mut self, speed: f64) -> RobotResult<()> {
         self.robot_impl.state_set_override((0, speed))?;
         Ok(())
     }
@@ -46,7 +47,7 @@ impl RobotBehavior for HansRobot {
         format!("HansRobot v{}", HANS_VERSION)
     }
 
-    fn init(&mut self) -> HansResult<()> {
+    fn init(&mut self) -> RobotResult<()> {
         if self.robot_impl.is_connected() {
             self.robot_impl.robot_power_on(())?;
             Ok(())
@@ -57,22 +58,22 @@ impl RobotBehavior for HansRobot {
         }
     }
 
-    fn shutdown(&mut self) -> HansResult<()> {
+    fn shutdown(&mut self) -> RobotResult<()> {
         self.disable()?;
         Ok(())
     }
 
-    fn enable(&mut self) -> HansResult<()> {
+    fn enable(&mut self) -> RobotResult<()> {
         self.robot_impl.robot_enable(0)?;
         Ok(())
     }
 
-    fn disable(&mut self) -> HansResult<()> {
+    fn disable(&mut self) -> RobotResult<()> {
         self.robot_impl.robot_disable(0)?;
         Ok(())
     }
 
-    fn reset(&mut self) -> HansResult<()> {
+    fn reset(&mut self) -> RobotResult<()> {
         self.robot_impl.robot_reset(0)?;
         Ok(())
     }
@@ -85,32 +86,67 @@ impl RobotBehavior for HansRobot {
         self.is_moving
     }
 
-    fn stop(&mut self) -> HansResult<()> {
+    fn stop(&mut self) -> RobotResult<()> {
         self.robot_impl.robot_move_stop(0)?;
         Ok(())
     }
 
-    fn pause(&mut self) -> HansResult<()> {
+    fn pause(&mut self) -> RobotResult<()> {
         self.robot_impl.robot_move_pause(0)?;
         Ok(())
     }
 
-    fn resume(&mut self) -> HansResult<()> {
+    fn resume(&mut self) -> RobotResult<()> {
         self.robot_impl.robot_move_continue(0)?;
         Ok(())
     }
 
-    fn emergency_stop(&mut self) -> HansResult<()> {
+    fn emergency_stop(&mut self) -> RobotResult<()> {
         unimplemented!("hans robot does not support emergency stop")
     }
 
-    fn clear_emergency_stop(&mut self) -> HansResult<()> {
+    fn clear_emergency_stop(&mut self) -> RobotResult<()> {
         unimplemented!("hans robot does not support clear emergency stop")
     }
 }
 
 impl ArmBehavior<HANS_DOF> for HansRobot {
-    fn move_to(&mut self, target: MotionType<HANS_DOF>, speed: f64) -> HansResult<()> {
+    type State = RobotState;
+    fn read_state(&mut self) -> RobotResult<Self::State> {
+        unimplemented!()
+    }
+    fn state(&mut self) -> RobotResult<ArmState<HANS_DOF>> {
+        let joint = self.robot_impl.state_read_act_pos(0)?.joint;
+        let pose = Pose::Euler(self.robot_impl.state_read_act_pos(0)?.pose_o_to_ee);
+        let joint_vel = self.robot_impl.state_read_act_joint_vel(0)?;
+        let pose_vel = self.robot_impl.state_read_act_tcp_vel(0)?;
+
+        let state = ArmState {
+            joint: Some(joint),
+            joint_vel: Some(joint_vel),
+            joint_acc: None,
+            tau: None,
+            pose_o_to_ee: Some(pose),
+            pose_f_to_ee: None,
+            pose_ee_to_k: None,
+            cartesian_vel: Some(pose_vel),
+            load: None,
+        };
+        Ok(state)
+    }
+    fn set_load(&mut self, load: LoadState) -> RobotResult<()> {
+        self.robot_impl.state_set_payload((
+            0,
+            Load {
+                mass: load.m,
+                centroid: load.x,
+            },
+        ))
+    }
+}
+
+impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
+    fn move_to(&mut self, target: MotionType<HANS_DOF>, speed: f64) -> RobotResult<()> {
         self.move_to_async(target, speed)?;
         loop {
             let state = self.robot_impl.state_read_cur_fsm(0)?;
@@ -123,7 +159,7 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_to_async(&mut self, target: MotionType<HANS_DOF>, speed: f64) -> HansResult<()> {
+    fn move_to_async(&mut self, target: MotionType<HANS_DOF>, speed: f64) -> RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -169,7 +205,7 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_rel(&mut self, rel: MotionType<HANS_DOF>) -> HansResult<()> {
+    fn move_rel(&mut self, rel: MotionType<HANS_DOF>) -> RobotResult<()> {
         self.move_rel_async(rel)?;
         loop {
             let state = self.robot_impl.state_read_cur_fsm(0)?;
@@ -182,7 +218,7 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_rel_async(&mut self, rel: MotionType<HANS_DOF>) -> HansResult<()> {
+    fn move_rel_async(&mut self, rel: MotionType<HANS_DOF>) -> RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -229,7 +265,7 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_path(&mut self, path: Vec<MotionType<HANS_DOF>>, speed: f64) -> HansResult<()> {
+    fn move_path(&mut self, path: Vec<MotionType<HANS_DOF>>, speed: f64) -> RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -287,33 +323,12 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
         self.is_moving = false;
         Ok(())
     }
-
-    fn control_with(&mut self, _: ControlType<HANS_DOF>) -> HansResult<()> {
+    fn control_with(&mut self, _: ControlType<HANS_DOF>) -> RobotResult<()> {
         unimplemented!("control_with is not implemented")
-    }
-
-    fn read_state(&mut self) -> robot_behavior::RobotResult<ArmState<HANS_DOF>> {
-        let joint = self.robot_impl.state_read_act_pos(0)?.joint;
-        let pose = Pose::Euler(self.robot_impl.state_read_act_pos(0)?.pose_o_to_ee);
-        let joint_vel = self.robot_impl.state_read_act_joint_vel(0)?;
-        let pose_vel = self.robot_impl.state_read_act_tcp_vel(0)?;
-
-        let state = ArmState {
-            joint: Some(joint),
-            joint_vel: Some(joint_vel),
-            joint_acc: None,
-            tau: None,
-            pose_o_to_ee: Some(pose),
-            pose_f_to_ee: None,
-            pose_ee_to_k: None,
-            cartesian_vel: Some(pose_vel),
-            load: None,
-        };
-        Ok(state)
     }
 }
 
-impl ArmBehaviorExt<HANS_DOF> for HansRobot {
+impl ArmPreplannedMotionExt<HANS_DOF> for HansRobot {
     fn move_path_prepare(
         &mut self,
         path: Vec<MotionType<HANS_DOF>>,

@@ -75,7 +75,7 @@ pub fn robot_serde_derive(input: TokenStream) -> TokenStream {
                 vec![#(#to_string_impl),*].join(",")
             }
 
-            fn from_str(s: &str) -> HansResult<Self> {
+            fn from_str(s: &str) -> RobotResult<Self> {
                 let parts: Vec<&str> = s.split(',').collect();
                 let mut current_index = 0;
 
