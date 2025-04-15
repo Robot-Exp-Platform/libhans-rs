@@ -1,0 +1,14 @@
+指令 Enable | 发送 "Enable" | 返回 
+指令 Disable | 发送 "Disable" | 返回 
+指令 Reset | 发送 "Reset" | 返回 
+指令 IsMoving | 发送 "IsMoving" | 返回 true
+指令 Stop | 发送 "Stop" | 返回 
+指令 Pause | 发送 "Pause" | 返回 
+指令 Resume | 发送 "Resume" | 返回 
+指令 ArmState | 发送 "ArmState" | 返回 ArmState { joint: Some([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), joint_vel: Some([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), joint_acc: Some([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), tau: Some([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), pose_o_to_ee: Some(Quat(Isometry { rotation: [0.0, 0.0, 0.0, 1.0], translation: [0.0, 0.0, 0.0] })), pose_f_to_ee: Some(Quat(Isometry { rotation: [0.0, 0.0, 0.0, 1.0], translation: [0.0, 0.0, 0.0] })), pose_ee_to_k: Some(Quat(Isometry { rotation: [0.0, 0.0, 0.0, 1.0], translation: [0.0, 0.0, 0.0] })), cartesian_vel: Some([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), load: Some(LoadState { m: 0.0, x: [0.0, 0.0, 0.0], i: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] }) }
+指令 SetLoad | 发送 {"m":1.0,"x":[0.0,0.0,0.0]} | 返回 
+指令 SetSpeed | 发送 {"speed":1.0} | 返回 
+指令 MoveJoint | 发送 {"joint":[0.0,0.0,0.0,0.0,0.0,0.0],"speed":1.0} | 返回 
+指令 MoveJointRel | 发送 {"joint":[1.0,0.0,0.0,0.0,0.0,0.0]} | 返回 
+指令 MoveLinearWithEuler | 发送 {"pose":[0.0,0.0,0.0,0.0,0.0,0.0],"speed":1.0} | 返回 
+指令 MoveLinearWithEulerRel | 发送 {"pose":[1.0,0.0,0.0,0.0,0.0,0.0]} | 返回

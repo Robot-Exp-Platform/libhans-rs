@@ -239,6 +239,7 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
                         dis: joint.abs(),
                     };
                     self.robot_impl.move_joint_rel((0, move_config))?;
+                    break;
                 }
             }
             MotionType::CartesianEuler(pose) => {
