@@ -1,5 +1,6 @@
 use clap::Parser;
-use libhans::{HANS_DOF, HansRobot, PORT_IF};
+use colored::Colorize;
+use libhans::{HANS_ASCII, HANS_DOF, HANS_VERSION, HansRobot, PORT_IF, ROPLAT_ASCII};
 use robot_behavior::{
     ArmBehavior, ArmPreplannedMotion, ArmPreplannedMotionExt, LoadState, MotionType, RobotBehavior,
     RobotException, RobotResult,
@@ -108,6 +109,11 @@ fn handle_client(mut stream: TcpStream) -> RobotResult<()> {
 
 fn main() -> RobotResult<()> {
     let args = CommandLineArguments::parse();
+
+    println!("{}", ROPLAT_ASCII.blue());
+    println!("<<<<<<Welcome to the robot control interface, we are roplat>>>>>>");
+    println!("Version: {}", HANS_VERSION.yellow());
+    println!("{}", HANS_ASCII.green());
 
     let port = args.port.parse::<u16>().unwrap_or(PORT_IF);
     let tcp_listener = TcpListener::bind(format!("0.0.0.0:{}", port))?;
