@@ -35,6 +35,7 @@ enum RobotCommand {
     MoveJointRel { joint: [f64; HANS_DOF] },
     MoveLinearWithEuler { pose: [f64; 6], speed: f64 },
     MoveLinearWithEulerRel { pose: [f64; 6] },
+    MovePathFromFile { path: String, speed: f64 },
 }
 
 fn handle_client(mut stream: TcpStream) -> RobotResult<()> {
@@ -94,6 +95,9 @@ fn handle_client(mut stream: TcpStream) -> RobotResult<()> {
             RobotCommand::MoveLinearWithEulerRel { pose } => {
                 robot.move_rel(MotionType::CartesianEuler(pose))
             }
+            RobotCommand::MovePathFromFile { path, speed } => {
+                robot.move_path_from_file(&path, speed)
+            }
         };
 
         if let Err(e) = result {
@@ -138,6 +142,18 @@ mod tests {
 
     #[test]
     fn test_robot_command_serde_json() {
+        let command = RobotCommand::Connect {
+            ip: "192.168.0.2".to_string(),
+        };
+        println!(
+            "指令 {} | 发送 {} | 返回 {}",
+            "Connect", r#"{"Connect":{"ip":"192.168.0.2"}}"#, ""
+        );
+        assert_eq!(
+            serde_json::to_string(&command).unwrap(),
+            r#"{"Connect":{"ip":"192.168.0.2"}}"#
+        );
+
         let command = RobotCommand::Enable;
         println!("指令 {} | 发送 {} | 返回 {}", "Enable", "\"Enable\"", "");
         assert_eq!(serde_json::to_string(&command).unwrap(), "\"Enable\"");
@@ -184,7 +200,7 @@ mod tests {
         };
         println!(
             "指令 {} | 发送 {} | 返回 {}",
-            "SetLoad", r#"{"m":1.0,"x":[0.0,0.0,0.0]}"#, ""
+            "SetLoad", r#"{"SetLoad":{"m":1.0,"x":[0.0,0.0,0.0]}}"#, ""
         );
         assert_eq!(
             serde_json::to_string(&command).unwrap(),
@@ -194,7 +210,7 @@ mod tests {
         let command = RobotCommand::SetSpeed { speed: 1.0 };
         println!(
             "指令 {} | 发送 {} | 返回 {}",
-            "SetSpeed", r#"{"speed":1.0}"#, ""
+            "SetSpeed", r#"{"SetSpeed":{"speed":1.0}}"#, ""
         );
         assert_eq!(
             serde_json::to_string(&command).unwrap(),
@@ -207,7 +223,7 @@ mod tests {
         };
         println!(
             "指令 {} | 发送 {} | 返回 {}",
-            "MoveJoint", r#"{"joint":[0.0,0.0,0.0,0.0,0.0,0.0],"speed":1.0}"#, ""
+            "MoveJoint", r#"{"MoveJoint":{"joint":[0.0,0.0,0.0,0.0,0.0,0.0],"speed":1.0}}"#, ""
         );
         assert_eq!(
             serde_json::to_string(&command).unwrap(),
@@ -219,7 +235,7 @@ mod tests {
         };
         println!(
             "指令 {} | 发送 {} | 返回 {}",
-            "MoveJointRel", r#"{"joint":[1.0,0.0,0.0,0.0,0.0,0.0]}"#, ""
+            "MoveJointRel", r#"{"MoveJointRel":{"joint":[1.0,0.0,0.0,0.0,0.0,0.0]}}"#, ""
         );
         assert_eq!(
             serde_json::to_string(&command).unwrap(),
@@ -232,7 +248,9 @@ mod tests {
         };
         println!(
             "指令 {} | 发送 {} | 返回 {}",
-            "MoveLinearWithEuler", r#"{"pose":[0.0,0.0,0.0,0.0,0.0,0.0],"speed":1.0}"#, ""
+            "MoveLinearWithEuler",
+            r#"{"MoveLinearWithEuler":{"pose":[0.0,0.0,0.0,0.0,0.0,0.0],"speed":1.0}}"#,
+            ""
         );
         assert_eq!(
             serde_json::to_string(&command).unwrap(),
@@ -244,11 +262,26 @@ mod tests {
         };
         println!(
             "指令 {} | 发送 {} | 返回 {}",
-            "MoveLinearWithEulerRel", r#"{"pose":[1.0,0.0,0.0,0.0,0.0,0.0]}"#, ""
+            "MoveLinearWithEulerRel",
+            r#"{"MoveLinearWithEulerRel":{"pose":[1.0,0.0,0.0,0.0,0.0,0.0]}}"#,
+            ""
         );
         assert_eq!(
             serde_json::to_string(&command).unwrap(),
             r#"{"MoveLinearWithEulerRel":{"pose":[1.0,0.0,0.0,0.0,0.0,0.0]}}"#
+        );
+
+        let command = RobotCommand::MovePathFromFile {
+            path: String::from("path/to/file"),
+            speed: 1.0,
+        };
+        println!(
+            "指令 {} | 发送 {} | 返回 {}",
+            "MovePathFromFile", r#"{"MovePathFromFile":{"path":"path/to/file","speed":1.0}}"#, ""
+        );
+        assert_eq!(
+            serde_json::to_string(&command).unwrap(),
+            r#"{"MovePathFromFile":{"path":"path/to/file","speed":1.0}}"#
         );
     }
 }
