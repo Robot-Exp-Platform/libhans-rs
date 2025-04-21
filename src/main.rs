@@ -311,4 +311,21 @@ mod tests {
             r#"{"MovePathFromFile":{"path":"low_traj.csv","speed":1.0}}"#
         );
     }
+
+    #[test]
+    fn test_move_path() {
+        let motion = [MotionType::Joint([0.; 6]); 10];
+        let motion_json = serde_json::to_string(&motion).unwrap();
+        let file_path = "traj_joint.json";
+        let mut file = std::fs::File::create(file_path).unwrap();
+        file.write_all(motion_json.as_bytes()).unwrap();
+        file.flush().unwrap();
+
+        let motion = [MotionType::<6>::Cartesian(Pose::Euler([0.; 3], [0.; 3])); 10];
+        let motion_json = serde_json::to_string(&motion).unwrap();
+        let file_path = "traj_cartesian.json";
+        let mut file = std::fs::File::create(file_path).unwrap();
+        file.write_all(motion_json.as_bytes()).unwrap();
+        file.flush().unwrap();
+    }
 }
