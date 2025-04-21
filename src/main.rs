@@ -2,8 +2,8 @@ use clap::Parser;
 use colored::Colorize;
 use libhans::{HANS_ASCII, HANS_DOF, HANS_VERSION, HansRobot, PORT_IF, ROPLAT_ASCII};
 use robot_behavior::{
-    ArmBehavior, ArmPreplannedMotion, ArmPreplannedMotionExt, LoadState, MotionType, RobotBehavior,
-    RobotException, RobotResult,
+    ArmBehavior, ArmPreplannedMotion, ArmPreplannedMotionExt, LoadState, MotionType, Pose,
+    RobotBehavior, RobotException, RobotResult,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -32,9 +32,9 @@ enum RobotCommand {
     SetLoad { m: f64, x: [f64; 3] },
     SetSpeed { speed: f64 },
     MoveJoint { joint: [f64; HANS_DOF], speed: f64 },
-    MoveJointRel { joint: [f64; HANS_DOF] },
+    MoveJointRel { joint: [f64; HANS_DOF], speed: f64 },
     MoveLinearWithEuler { pose: [f64; 6], speed: f64 },
-    MoveLinearWithEulerRel { pose: [f64; 6] },
+    MoveLinearWithEulerRel { pose: [f64; 6], speed: f64 },
     MovePathFromFile { path: String, speed: f64 },
 }
 
@@ -88,12 +88,24 @@ fn handle_client(mut stream: TcpStream) -> RobotResult<()> {
             RobotCommand::SetLoad { m, x } => robot.set_load(LoadState { m, x, i: [0.0; 9] }),
             RobotCommand::SetSpeed { speed } => robot.set_speed(speed),
             RobotCommand::MoveJoint { joint, speed } => robot.move_joint(&&joint, speed),
-            RobotCommand::MoveJointRel { joint } => robot.move_joint_rel(&joint),
+            RobotCommand::MoveJointRel { joint, speed } => robot.move_joint_rel(&joint, speed),
             RobotCommand::MoveLinearWithEuler { pose, speed } => {
-                robot.move_linear_with_euler(&pose, speed)
+                let (tran, rot) = pose.split_at(3);
+                robot.move_linear_with_euler(
+                    tran.try_into().unwrap(),
+                    rot.try_into().unwrap(),
+                    speed,
+                )
             }
-            RobotCommand::MoveLinearWithEulerRel { pose } => {
-                robot.move_rel(MotionType::CartesianEuler(pose))
+            RobotCommand::MoveLinearWithEulerRel { pose, speed } => {
+                let (tran, rot) = pose.split_at(3);
+                robot.move_rel(
+                    MotionType::Cartesian(Pose::Euler(
+                        tran.try_into().unwrap(),
+                        rot.try_into().unwrap(),
+                    )),
+                    speed,
+                )
             }
             RobotCommand::MovePathFromFile { path, speed } => {
                 robot.move_path_from_file(&path, speed)
@@ -232,6 +244,7 @@ mod tests {
 
         let command = RobotCommand::MoveJointRel {
             joint: [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            speed: 1.0,
         };
         println!(
             "指令 {} | 发送 {} | 返回 {}",
@@ -239,7 +252,7 @@ mod tests {
         );
         assert_eq!(
             serde_json::to_string(&command).unwrap(),
-            r#"{"MoveJointRel":{"joint":[1.0,0.0,0.0,0.0,0.0,0.0]}}"#
+            r#"{"MoveJointRel":{"joint":[1.0,0.0,0.0,0.0,0.0,0.0],"speed":1.0}}"#
         );
 
         let command = RobotCommand::MoveLinearWithEuler {
@@ -259,16 +272,17 @@ mod tests {
 
         let command = RobotCommand::MoveLinearWithEulerRel {
             pose: [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            speed: 1.0,
         };
         println!(
             "指令 {} | 发送 {} | 返回 {}",
             "MoveLinearWithEulerRel",
-            r#"{"MoveLinearWithEulerRel":{"pose":[1.0,0.0,0.0,0.0,0.0,0.0]}}"#,
+            r#"{"MoveLinearWithEulerRel":{"pose":[1.0,0.0,0.0,0.0,0.0,0.0],"speed":1.0}}"#,
             ""
         );
         assert_eq!(
             serde_json::to_string(&command).unwrap(),
-            r#"{"MoveLinearWithEulerRel":{"pose":[1.0,0.0,0.0,0.0,0.0,0.0]}}"#
+            r#"{"MoveLinearWithEulerRel":{"pose":[1.0,0.0,0.0,0.0,0.0,0.0],"speed":1.0}}"#
         );
 
         let command = RobotCommand::MovePathFromFile {
@@ -282,6 +296,19 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&command).unwrap(),
             r#"{"MovePathFromFile":{"path":"path/to/file","speed":1.0}}"#
+        );
+
+        let command = RobotCommand::MovePathFromFile {
+            path: "low_traj.csv".into(),
+            speed: 1.0,
+        };
+        println!(
+            "指令 {} | 发送 {} | 返回 {}",
+            "MovePathFromFile", r#"{"MovePathFromFile":{"path":"low_traj.csv","speed":1.0}}"#, ""
+        );
+        assert_eq!(
+            serde_json::to_string(&command).unwrap(),
+            r#"{"MovePathFromFile":{"path":"low_traj.csv","speed":1.0}}"#
         );
     }
 }

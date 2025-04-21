@@ -1,5 +1,5 @@
 use pyo3::{PyResult, exceptions::PyException, pyclass, pymethods};
-use robot_behavior::{RobotBehavior, RobotException};
+use robot_behavior::{ArmPreplannedMotionExt, RobotBehavior, RobotException};
 
 use crate::{HANS_DOF, HansRobot};
 
@@ -10,6 +10,7 @@ pub struct PyHansRobot {
 
 #[pymethods]
 impl PyHansRobot {
+    // ! impl HansRobot
     #[new]
     fn new(ip: &str) -> Self {
         PyHansRobot {
@@ -25,23 +26,11 @@ impl PyHansRobot {
         self.robot.disconnect()
     }
 
-    fn move_joint(&mut self, joint: [f64; HANS_DOF], speed: f64) -> PyResult<()> {
-        self.robot.move_joint(joint, speed).map_err(map_err)
+    fn set_speed(&mut self, speed: f64) -> PyResult<()> {
+        self.robot.set_speed(speed).map_err(map_err)
     }
 
-    fn move_joint_rel(&mut self, joint: [f64; HANS_DOF]) -> PyResult<()> {
-        self.robot.move_joint_rel(joint).map_err(map_err)
-    }
-
-    fn move_linear_with_euler(&mut self, pose: [f64; 6], speed: f64) -> PyResult<()> {
-        self.robot
-            .move_linear_with_euler(pose, speed)
-            .map_err(map_err)
-    }
-
-    fn move_linear_with_euler_rel(&mut self, pose: [f64; 6]) -> PyResult<()> {
-        self.robot.move_linear_with_euler_rel(pose).map_err(map_err)
-    }
+    // ! impl RobotBehavior for HansRobot
 
     fn version(&self) -> String {
         self.robot.version()
@@ -63,6 +52,32 @@ impl PyHansRobot {
         self.robot.disable().map_err(map_err)
     }
 
+    fn reset(&mut self) -> PyResult<()> {
+        self.robot.reset().map_err(map_err)
+    }
+
+    fn is_moving(&mut self) -> bool {
+        self.robot.is_moving()
+    }
+
+    fn move_joint(&mut self, joint: [f64; HANS_DOF], speed: f64) -> PyResult<()> {
+        self.robot.move_joint(&joint, speed).map_err(map_err)
+    }
+
+    fn move_joint_rel(&mut self, joint: [f64; HANS_DOF]) -> PyResult<()> {
+        self.robot.move_joint_rel(&joint).map_err(map_err)
+    }
+
+    fn move_linear_with_euler(&mut self, pose: [f64; 6], speed: f64) -> PyResult<()> {
+        self.robot
+            .move_linear_with_euler(&pose, speed)
+            .map_err(map_err)
+    }
+
+    fn move_linear_with_euler_rel(&mut self, pose: [f64; 6]) -> PyResult<()> {
+        self.robot.move_linear_with_euler_rel(pose).map_err(map_err)
+    }
+
     fn stop(&mut self) -> PyResult<()> {
         self.robot.stop().map_err(map_err)
     }
@@ -77,10 +92,6 @@ impl PyHansRobot {
 
     fn clear_emergency_stop(&mut self) -> PyResult<()> {
         self.robot.clear_emergency_stop().map_err(map_err)
-    }
-
-    fn is_moving(&mut self) -> bool {
-        self.robot.is_moving()
     }
 }
 
