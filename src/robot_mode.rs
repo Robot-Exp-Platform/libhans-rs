@@ -1,7 +1,7 @@
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use crate::{HansResult, types::CommandSerde};
-use robot_behavior::deserialize_error;
+use crate::types::CommandSerde;
+use robot_behavior::{RobotResult, deserialize_error};
 
 #[derive(Default, Debug, Serialize_repr, Deserialize_repr, PartialEq, Copy, Clone)]
 #[repr(u8)]
@@ -108,7 +108,7 @@ impl CommandSerde for RobotMode {
         format!("{}", *self as u8)
     }
 
-    fn from_str(data: &str) -> HansResult<Self> {
+    fn from_str(data: &str) -> RobotResult<Self> {
         data.parse::<u8>()
             .map_err(deserialize_error::<Self, _>(data))
             .map(RobotMode::from)

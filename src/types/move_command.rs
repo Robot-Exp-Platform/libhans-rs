@@ -1,8 +1,7 @@
-use robot_behavior::RobotException;
+use robot_behavior::{RobotException, RobotResult};
 
 use super::command::{Command, CommandRequest, CommandResponse};
 use super::command_serde::CommandSerde;
-use crate::HansResult;
 use crate::robot_error::RobotError;
 use crate::robot_param::HANS_DOF;
 
@@ -64,14 +63,14 @@ pub type StartServoResponse = CommandResponse<{ Command::StartServo }, ()>;
 pub type PushServoJResponse = CommandResponse<{ Command::PushServoJ }, ()>;
 pub type PushServoPResponse = CommandResponse<{ Command::PushServoP }, ()>;
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct RelJ {
     pub id: u8,
     pub dir: bool,
     pub dis: f64,
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct RelL {
     pub id: u8,
     pub dir: bool,
@@ -81,7 +80,7 @@ pub struct RelL {
 
 // TODO: 路点指令有两种指令形式，部分情况下部分内容不作为输入参数
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct WayPointRel {
     pub move_mode: u8,
     pub use_point_list: bool,
@@ -102,7 +101,7 @@ pub struct WayPointRel {
     pub command_id: String,
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct WayPointEx {
     pub pose: [f64; 6],
     pub joint: [f64; HANS_DOF],
@@ -119,7 +118,7 @@ pub struct WayPointEx {
     pub command_id: String,
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct WayPoint {
     pub pose: [f64; 6],
     pub joint: [f64; HANS_DOF],
@@ -136,7 +135,7 @@ pub struct WayPoint {
     pub command_id: String,
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct WayPoint2 {
     pub pose1: [f64; 6],
     pub joint: [f64; HANS_DOF],
@@ -154,7 +153,7 @@ pub struct WayPoint2 {
     pub command_id: String,
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct MoveJ {
     pub pose: [f64; 6],
     pub joint: [f64; HANS_DOF],
@@ -170,7 +169,7 @@ pub struct MoveJ {
     pub command_id: String,
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct MoveL {
     pub pose: [f64; 6],
     pub joint: [f64; HANS_DOF],
@@ -186,7 +185,7 @@ pub struct MoveL {
     pub command_id: String,
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct MoveC {
     pub pose_start: [f64; 6],
     pub pose_pass: [f64; 6],
@@ -202,14 +201,14 @@ pub struct MoveC {
     pub command_id: String,
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct StartPushMovePathJ {
     pub path_name: String,
     pub speed: f64,
     pub radius: f64,
 }
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct StartPushMovePathL {
     pub path_name: String,
     pub vel: f64,
@@ -236,14 +235,14 @@ impl<const N: usize> CommandSerde for MovePaths<N> {
         .join(",")
     }
 
-    fn from_str(data: &str) -> HansResult<Self> {
+    fn from_str(data: &str) -> RobotResult<Self> {
         let mut iter = data.split(',');
         let path_name = CommandSerde::from_str(iter.next().unwrap())?;
         let move_mode = CommandSerde::from_str(iter.next().unwrap())?;
         let _: u16 = CommandSerde::from_str(iter.next().unwrap())?;
         let mut points = [[0.0; 6]; N];
-        for i in 0..N {
-            points[i] = CommandSerde::from_str(iter.next().unwrap())?;
+        for point in points.iter_mut().take(N) {
+            *point = CommandSerde::from_str(iter.next().unwrap())?;
         }
         Ok(MovePaths {
             path_name,

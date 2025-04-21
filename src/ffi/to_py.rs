@@ -198,7 +198,58 @@ impl PyHansRobot {
         self.0.disable().map_err(map_err)
     }
 
-    /// 机器人停止
+    fn reset(&mut self) -> PyResult<()> {
+        self.robot.reset().map_err(map_err)
+    }
+
+    fn is_moving(&mut self) -> bool {
+        self.robot.is_moving()
+    }
+
+    fn move_joint(&mut self, joint: [f64; HANS_DOF], speed: f64) -> PyResult<()> {
+        self.robot.move_joint(&joint, speed).map_err(map_err)
+    }
+
+    fn move_joint_rel(&mut self, joint: [f64; HANS_DOF]) -> PyResult<()> {
+        self.robot.move_joint_rel(&joint).map_err(map_err)
+    }
+
+    fn move_linear_with_euler(&mut self, pose: [f64; 6], speed: f64) -> PyResult<()> {
+        self.robot
+            .move_linear_with_euler(&pose, speed)
+            .map_err(map_err)
+    }
+
+    fn reset(&mut self) -> PyResult<()> {
+        self.robot.reset().map_err(map_err)
+    }
+
+    fn is_moving(&mut self) -> bool {
+        self.robot.is_moving()
+    }
+
+    fn move_joint(&mut self, joint: [f64; HANS_DOF], speed: f64) -> PyResult<()> {
+        self.robot.move_joint(&joint, speed).map_err(map_err)
+    }
+
+    fn move_joint_rel(&mut self, joint: [f64; HANS_DOF]) -> PyResult<()> {
+        self.robot.move_joint_rel(&joint).map_err(map_err)
+    }
+
+    fn move_linear_with_euler(&mut self, pose: [f64; 6], speed: f64) -> PyResult<()> {
+        self.robot
+            .move_linear_with_euler(&pose, speed)
+            .map_err(map_err)
+    }
+
+    fn move_linear_with_euler_rel(&mut self, pose: [f64; 6]) -> PyResult<()> {
+        self.robot.move_linear_with_euler_rel(pose).map_err(map_err)
+    }
+
+    fn move_linear_with_euler_rel(&mut self, pose: [f64; 6]) -> PyResult<()> {
+        self.robot.move_linear_with_euler_rel(pose).map_err(map_err)
+    }
+
     fn stop(&mut self) -> PyResult<()> {
         self.0.stop().map_err(map_err)
     }

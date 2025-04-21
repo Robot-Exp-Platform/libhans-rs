@@ -1,6 +1,5 @@
 #![feature(adt_const_params)]
 
-mod exception;
 mod ffi;
 mod network;
 mod robot;
@@ -11,7 +10,6 @@ mod robot_param;
 mod robot_state;
 mod types;
 
-pub use exception::HansResult;
 #[cfg(any(feature = "to_c", feature = "to_cxx", feature = "to_py"))]
 pub use ffi::*;
 pub use network::*;

@@ -1,13 +1,14 @@
 use inventory::submit;
+use robot_behavior::RobotResult;
 
-use crate::{Network, RobotMode, exception::HansResult, robot_param::HANS_DOF, types::*};
+use crate::{Network, RobotMode, robot_param::HANS_DOF, types::*};
 
 #[derive(Default)]
 pub struct RobotImpl {
     pub network: Network,
 }
 
-pub type DispatchFn = fn(&mut RobotImpl, &str) -> HansResult<String>;
+pub type DispatchFn = fn(&mut RobotImpl, &str) -> RobotResult<String>;
 pub struct CommandSubmit {
     pub fn_name: &'static str,
     pub dispatch: DispatchFn,
@@ -18,7 +19,7 @@ macro_rules! submit {
     ($fn_name:ident) => {
         inventory::submit!(CommandSubmit {
             fn_name: stringify!($fn_name),
-            dispatch: |robot: &mut RobotImpl, input: &str| -> HansResult<String> {
+            dispatch: |robot: &mut RobotImpl, input: &str| -> RobotResult<String> {
                 Ok(CommandSerde::to_string(&robot.$fn_name(CommandSerde::from_str(input)?)?))
             }
         });
@@ -30,49 +31,49 @@ macro_rules! submit {
 
 macro_rules! cmd_fn {
     ($fn_name:ident, $req_type:ty, $res_type:ty) => {
-        pub fn $fn_name(&mut self, _:()) -> HansResult<()> {
+        pub fn $fn_name(&mut self, _:()) -> RobotResult<()> {
             let response: $res_type = self.network.send_and_recv(&<$req_type>::from(()))?;
             response.status.map_err(Into::into)
         }
     };
     ($fn_name:ident, $req_type:ty, $res_type:ty;; $ret_type:ty) => {
-        pub fn $fn_name(&mut self, _:()) -> HansResult<$ret_type> {
+        pub fn $fn_name(&mut self, _:()) -> RobotResult<$ret_type> {
             let response: $res_type = self.network.send_and_recv(&<$req_type>::from(()))?;
             Ok(response.status.unwrap())
         }
     };
     ($fn_name:ident, $req_type:ty, $res_type:ty; $($arg_name:ident: $arg_type:ty),*) => {
-        pub fn $fn_name(&mut self, $($arg_name: $arg_type),*) -> HansResult<()> {
+        pub fn $fn_name(&mut self, $($arg_name: $arg_type),*) -> RobotResult<()> {
             let _: $res_type = self.network.send_and_recv(&<$req_type>::from(($($arg_name),*)))?;
             Ok(())
         }
     };
     ($fn_name:ident, $req_type:ty, $res_type:ty; $($arg_name:ident: $arg_type:ty),* ; $ret_type:ty) => {
-        pub fn $fn_name(&mut self, $($arg_name: $arg_type),*) -> HansResult<$ret_type> {
+        pub fn $fn_name(&mut self, $($arg_name: $arg_type),*) -> RobotResult<$ret_type> {
             let response: $res_type = self.network.send_and_recv(&<$req_type>::from(($($arg_name),*)))?;
             response.status.map_err(Into::into)
         }
     };
     ($fn_name:ident<$const_ty:ty; $const_name:ident>, $req_type:ty, $res_type:ty) => {
-        pub fn $fn_name<const $const_name: usize>(&mut self, argc: [$const_ty; $const_name]) -> HansResult<[$const_ty; $const_name]> {
+        pub fn $fn_name<const $const_name: usize>(&mut self, argc: [$const_ty; $const_name]) -> RobotResult<[$const_ty; $const_name]> {
             let response: $res_type = self.network.send_and_recv(&<$req_type>::from(argc))?;
             response.status.map_err(Into::into)
         }
     };
     ($fn_name:ident<$const_ty:ty; $const_name:ident>, $req_type:ty, $res_type:ty;;  $ret_type:ty) => {
-        pub fn $fn_name<const $const_name: usize>(&mut self, argc: [$const_ty; $const_name]) -> HansResult<$ret_type> {
+        pub fn $fn_name<const $const_name: usize>(&mut self, argc: [$const_ty; $const_name]) -> RobotResult<$ret_type> {
             let response: $res_type = self.network.send_and_recv(&<$req_type>::from(argc))?;
             Ok(response.status.unwrap())
         }
     };
     ($fn_name:ident<$const_name:ident>, $req_type:ty, $res_type:ty; $($arg_name:ident: $arg_type:ty),*) => {
-        pub fn $fn_name<const $const_name: usize>(&mut self, $($arg_name: $arg_type),*) -> HansResult<()> {
+        pub fn $fn_name<const $const_name: usize>(&mut self, $($arg_name: $arg_type),*) -> RobotResult<()> {
             let _: $res_type = self.network.send_and_recv(&<$req_type>::from(($($arg_name),*)))?;
             Ok(())
         }
     };
     ($fn_name:ident<$const_name:ident>, $req_type:ty, $res_type:ty; $($arg_name:ident: $arg_type:ty),* ; $ret_type:ty) => {
-        pub fn $fn_name<const $const_name: usize>(&mut self, $($arg_name: $arg_type),*) -> HansResult<$ret_type> {
+        pub fn $fn_name<const $const_name: usize>(&mut self, $($arg_name: $arg_type),*) -> RobotResult<$ret_type> {
             let response: $res_type = self.network.send_and_recv(&<$req_type>::from(($($arg_name),*)))?;
             response.status.map_err(Into::into)
         }
@@ -103,12 +104,12 @@ impl RobotImpl {
     // ! 以下为机器人控制接口
     // ! 初始化指令
 
-    pub fn power_off(&mut self) -> HansResult<()> {
+    pub fn power_off(&mut self) -> RobotResult<()> {
         let _: OSCmdResponse = self.network.send_and_recv(&OSCmdRequest::from(1))?;
         Ok(())
     }
 
-    pub fn restart(&mut self) -> HansResult<()> {
+    pub fn restart(&mut self) -> RobotResult<()> {
         let _: OSCmdResponse = self.network.send_and_recv(&OSCmdRequest::from(2))?;
         Ok(())
     }
