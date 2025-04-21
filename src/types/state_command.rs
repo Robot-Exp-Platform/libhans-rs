@@ -91,8 +91,8 @@ pub struct RobotFlag {
 pub struct ActPose {
     pub joint: [f64; HANS_DOF],
     pub pose_o_to_ee: [f64; 6],
-    pose_f_to_ee: [f64; 6],
-    pose_u_to_ee: [f64; 6],
+    pub pose_f_to_ee: [f64; 6],
+    pub pose_u_to_ee: [f64; 6],
 }
 
 #[derive(Default, libhans_derive::CommandSerde, Debug, PartialEq)]

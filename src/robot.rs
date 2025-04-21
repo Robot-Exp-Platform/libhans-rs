@@ -1,3 +1,5 @@
+use std::{thread::sleep, time::Duration};
+
 use robot_behavior::{
     ArmBehavior, ArmPreplannedMotion, ArmPreplannedMotionExt, ArmState, ControlType, LoadState,
     MotionType, Pose, RobotBehavior, RobotException, RobotResult,
@@ -14,6 +16,8 @@ use crate::{
 pub struct HansRobot {
     pub robot_impl: RobotImpl,
     is_moving: bool,
+    speed: f64,
+    prepared_path_type: Option<MotionType<HANS_DOF>>,
 }
 
 impl HansRobot {
@@ -37,7 +41,10 @@ impl HansRobot {
     }
 
     pub fn set_speed(&mut self, speed: f64) -> RobotResult<()> {
-        self.robot_impl.state_set_override((0, speed))?;
+        if self.speed != speed {
+            self.speed = speed;
+            self.robot_impl.state_set_override((0, speed))?;
+        }
         Ok(())
     }
 }
@@ -116,18 +123,23 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
         unimplemented!()
     }
     fn state(&mut self) -> RobotResult<ArmState<HANS_DOF>> {
-        let joint = self.robot_impl.state_read_act_pos(0)?.joint;
-        let pose = Pose::Euler(self.robot_impl.state_read_act_pos(0)?.pose_o_to_ee);
+        let act_pose = self.robot_impl.state_read_act_pos(0)?;
         let joint_vel = self.robot_impl.state_read_act_joint_vel(0)?;
         let pose_vel = self.robot_impl.state_read_act_tcp_vel(0)?;
 
         let state = ArmState {
-            joint: Some(joint),
+            joint: Some(act_pose.joint),
             joint_vel: Some(joint_vel),
             joint_acc: None,
             tau: None,
-            pose_o_to_ee: Some(pose),
-            pose_f_to_ee: None,
+            pose_o_to_ee: Some(Pose::Euler(
+                act_pose.pose_o_to_ee[0..3].try_into().unwrap(),
+                act_pose.pose_o_to_ee[3..6].try_into().unwrap(),
+            )),
+            pose_f_to_ee: Some(Pose::Euler(
+                act_pose.pose_f_to_ee[0..3].try_into().unwrap(),
+                act_pose.pose_f_to_ee[3..6].try_into().unwrap(),
+            )),
             pose_ee_to_k: None,
             cartesian_vel: Some(pose_vel),
             load: None,
@@ -183,9 +195,9 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
                 };
                 self.robot_impl.move_way_point_ex((0, move_config))?;
             }
-            MotionType::CartesianEuler(pose) => {
+            MotionType::Cartesian(Pose::Euler(tran, rot)) => {
                 let move_config = WayPointEx {
-                    pose,
+                    pose: [tran[0], tran[1], tran[2], rot[0], rot[1], rot[2]],
                     vel: 25.,
                     acc: 100.,
                     radius: 5.,
@@ -205,8 +217,8 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_rel(&mut self, rel: MotionType<HANS_DOF>) -> RobotResult<()> {
-        self.move_rel_async(rel)?;
+    fn move_rel(&mut self, rel: MotionType<HANS_DOF>, speed: f64) -> RobotResult<()> {
+        self.move_rel_async(rel, speed)?;
         loop {
             let state = self.robot_impl.state_read_cur_fsm(0)?;
             if state == RobotMode::StandBy {
@@ -218,13 +230,14 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_rel_async(&mut self, rel: MotionType<HANS_DOF>) -> RobotResult<()> {
+    fn move_rel_async(&mut self, rel: MotionType<HANS_DOF>, speed: f64) -> RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
             ));
         }
         self.is_moving = true;
+        self.set_speed(speed)?;
 
         match rel {
             MotionType::Joint(joint) => {
@@ -239,9 +252,11 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
                         dis: joint.abs(),
                     };
                     self.robot_impl.move_joint_rel((0, move_config))?;
+                    return Ok(());
                 }
             }
-            MotionType::CartesianEuler(pose) => {
+            MotionType::Cartesian(Pose::Euler(tran, rot)) => {
+                let pose = [tran[0], tran[1], tran[2], rot[0], rot[1], rot[2]];
                 for (id, pose) in pose.iter().enumerate().take(HANS_DOF) {
                     if *pose == 0. {
                         continue;
@@ -254,6 +269,7 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
                         coord: 0,
                     };
                     self.robot_impl.move_line_rel((0, move_config))?;
+                    return Ok(());
                 }
             }
             _ => {
@@ -293,9 +309,24 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
                     }
                 }
                 self.robot_impl.end_push_move_path((0, path_name.into()))?;
+                loop {
+                    let state = self
+                        .robot_impl
+                        .read_move_path_state((0, path_name.into()))?;
+                    match state {
+                        3 => break,
+                        5 => {
+                            return Err(RobotException::UnprocessableInstructionError(
+                                "Connot calculate path, Check whether the points are appropriate"
+                                    .into(),
+                            ));
+                        }
+                        _ => sleep(Duration::from_millis(100)),
+                    }
+                }
                 self.robot_impl.move_path_j((0, path_name.into()))?;
             }
-            MotionType::CartesianEuler(_) => {
+            MotionType::Cartesian(_) => {
                 let path_config = StartPushMovePathL {
                     path_name: path_name.into(),
                     vel: 25.,
@@ -306,17 +337,39 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
                 };
                 self.robot_impl.start_push_move_path_l((0, path_config))?;
                 for point in path {
-                    if let MotionType::CartesianEuler(pose) = point {
+                    if let MotionType::Cartesian(Pose::Euler(tran, rot)) = point {
+                        let pose = [tran[0], tran[1], tran[2], rot[0], rot[1], rot[2]];
                         self.robot_impl.push_move_path_l((0, pose))?;
                     }
                 }
                 self.robot_impl.end_push_move_path((0, path_name.into()))?;
+                loop {
+                    let state = self
+                        .robot_impl
+                        .read_move_path_state((0, path_name.into()))?;
+                    match state {
+                        3 => break,
+                        5 => {
+                            return Err(RobotException::UnprocessableInstructionError(
+                                "Connot calculate path, Check whether the points are appropriate"
+                                    .into(),
+                            ));
+                        }
+                        _ => sleep(Duration::from_millis(100)),
+                    }
+                }
                 self.robot_impl.move_path_l((0, path_name.into()))?;
             }
             _ => {
                 return Err(RobotException::UnprocessableInstructionError(
                     "Unsupported motion type".into(),
                 ));
+            }
+        }
+        loop {
+            let state = self.robot_impl.state_read_cur_fsm(0)?;
+            if state == RobotMode::StandBy {
+                break;
             }
         }
 
@@ -338,10 +391,9 @@ impl ArmPreplannedMotionExt<HANS_DOF> for HansRobot {
                 "Robot is moving, you can not push new move command".into(),
             ));
         }
-        self.is_moving = true;
 
         let path_name = "hans_path";
-
+        self.prepared_path_type = Some(path[0]);
         match path[0] {
             MotionType::Joint(_) => {
                 let path_config = StartPushMovePathJ {
@@ -357,7 +409,7 @@ impl ArmPreplannedMotionExt<HANS_DOF> for HansRobot {
                     }
                 }
             }
-            MotionType::CartesianEuler(_) => {
+            MotionType::Cartesian(_) => {
                 let path_config = StartPushMovePathL {
                     path_name: path_name.into(),
                     vel: 25.,
@@ -368,7 +420,8 @@ impl ArmPreplannedMotionExt<HANS_DOF> for HansRobot {
                 };
                 self.robot_impl.start_push_move_path_l((0, path_config))?;
                 for point in path {
-                    if let MotionType::CartesianEuler(pose) = point {
+                    if let MotionType::Cartesian(Pose::Euler(tran, rot)) = point {
+                        let pose = [tran[0], tran[1], tran[2], rot[0], rot[1], rot[2]];
                         self.robot_impl.push_move_path_l((0, pose))?;
                     }
                 }
@@ -379,12 +432,61 @@ impl ArmPreplannedMotionExt<HANS_DOF> for HansRobot {
                 ));
             }
         }
-
+        self.robot_impl.end_push_move_path((0, path_name.into()))?;
         Ok(())
     }
 
     fn move_path_start(&mut self) -> robot_behavior::RobotResult<()> {
-        self.robot_impl.move_path_j((0, "hans_path".to_string()))?;
+        if self.is_moving() {
+            return Err(RobotException::UnprocessableInstructionError(
+                "Robot is moving, you can not push new move command".into(),
+            ));
+        }
+        let path_name = "hans_path";
+        loop {
+            let state = self
+                .robot_impl
+                .read_move_path_state((0, path_name.into()))?;
+            match state {
+                3 => break,
+                5 => {
+                    return Err(RobotException::UnprocessableInstructionError(
+                        "Connot calculate path, Check whether the points are appropriate".into(),
+                    ));
+                }
+                _ => sleep(Duration::from_millis(100)),
+            }
+        }
+        self.is_moving = true;
+
+        if let Some(motion) = self.prepared_path_type {
+            self.move_to(motion, 0.1)?;
+            match motion {
+                MotionType::Joint(_) => {
+                    self.robot_impl.move_path_j((0, path_name.to_string()))?;
+                }
+                MotionType::Cartesian(_) => {
+                    self.robot_impl.move_path_l((0, path_name.to_string()))?;
+                }
+                _ => {
+                    return Err(RobotException::UnprocessableInstructionError(
+                        "Unsupported motion type".into(),
+                    ));
+                }
+            }
+        } else {
+            return Err(RobotException::UnprocessableInstructionError(
+                "No prepared path".into(),
+            ));
+        }
+
+        loop {
+            let state = self.robot_impl.state_read_cur_fsm(0)?;
+            if state == RobotMode::StandBy {
+                break;
+            }
+        }
+        self.is_moving = false;
         Ok(())
     }
 }
