@@ -110,6 +110,7 @@ fn handle_client(mut stream: TcpStream) -> RobotResult<()> {
         .map_err(|e| format!("[Error:{}]", e));
 
         stream.write_all(serde_json::to_string(&result).unwrap().as_bytes())?;
+        stream.flush()?;
     }
     Ok(())
 }
