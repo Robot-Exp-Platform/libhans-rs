@@ -40,7 +40,6 @@ impl PyHansRobot {
         self.0.move_joint(&joint, speed).map_err(map_err)
     }
 
-    #[pyo3(text_signature = "(joint)")]
     fn move_joint_async(&mut self, joint: [f64; HANS_DOF], speed: f64) -> PyResult<()> {
         self.0.move_joint_async(&joint, speed).map_err(map_err)
     }

@@ -50,6 +50,7 @@ impl HansRobot {
 }
 
 impl RobotBehavior for HansRobot {
+    type State = RobotState;
     fn version(&self) -> String {
         format!("HansRobot v{}", HANS_VERSION)
     }
@@ -115,13 +116,13 @@ impl RobotBehavior for HansRobot {
     fn clear_emergency_stop(&mut self) -> RobotResult<()> {
         unimplemented!("hans robot does not support clear emergency stop")
     }
-}
 
-impl ArmBehavior<HANS_DOF> for HansRobot {
-    type State = RobotState;
     fn read_state(&mut self) -> RobotResult<Self::State> {
         unimplemented!()
     }
+}
+
+impl ArmBehavior<HANS_DOF> for HansRobot {
     fn state(&mut self) -> RobotResult<ArmState<HANS_DOF>> {
         let act_pose = self.robot_impl.state_read_act_pos(0)?;
         let joint_vel = self.robot_impl.state_read_act_joint_vel(0)?;
