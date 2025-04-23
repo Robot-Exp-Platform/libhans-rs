@@ -10,6 +10,8 @@ pub enum RobotError {
     NoError,
     NoNameError,
 
+    RECOnMoving = 20004,
+
     ControllerNotInit = 40000,
     RECParametersError = 40034,
     RECCmdFormatError = 40056,
@@ -22,6 +24,7 @@ impl Display for RobotError {
         match self {
             RobotError::NoError => write!(f, "No error"),
             RobotError::NoNameError => write!(f, "No name error"),
+            RobotError::RECOnMoving => write!(f, "REC on moving"),
             RobotError::ControllerNotInit => write!(f, "Controller not init"),
             RobotError::RECParametersError => write!(f, "REC parameters error"),
             RobotError::RECCmdFormatError => write!(f, "REC cmd format error"),

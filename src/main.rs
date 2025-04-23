@@ -3,7 +3,7 @@ use colored::Colorize;
 use libhans::{HANS_ASCII, HANS_DOF, HANS_VERSION, HansRobot, PORT_IF, ROPLAT_ASCII};
 use robot_behavior::{
     ArmBehavior, ArmPreplannedMotion, ArmPreplannedMotionExt, LoadState, MotionType, Pose,
-    RobotBehavior, RobotException, RobotResult,
+    RobotBehavior, RobotResult,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -58,67 +58,58 @@ fn handle_client(mut stream: TcpStream) -> RobotResult<()> {
                 continue;
             };
 
+        let map = |()| "".to_string();
+
         let result = match command {
             RobotCommand::Connect { ip } => {
                 robot.connect(&ip, PORT_IF);
-                Ok(())
+                Ok(String::new())
             }
-            RobotCommand::Enable => robot.enable(),
-            RobotCommand::Disable => robot.disable(),
-            RobotCommand::Reset => robot.reset(),
-            RobotCommand::IsMoving => {
-                let is_moving = robot.is_moving();
-                stream
-                    .write_all(format!("{:?}", is_moving).as_bytes())
-                    .map_err(|e| RobotException::NetworkError(e.to_string()))
+            RobotCommand::Enable => robot.enable().map(map),
+            RobotCommand::Disable => robot.disable().map(map),
+            RobotCommand::Reset => robot.reset().map(map),
+            RobotCommand::IsMoving => Ok(robot.is_moving().to_string()),
+            RobotCommand::Stop => robot.stop().map(map),
+            RobotCommand::ArmState => robot.state().map(|s| s.to_string()),
+            RobotCommand::Pause => robot.pause().map(map),
+            RobotCommand::Resume => robot.resume().map(map),
+            RobotCommand::SetLoad { m, x } => {
+                robot.set_load(LoadState { m, x, i: [0.0; 9] }).map(map)
             }
-            RobotCommand::Stop => robot.stop(),
-            RobotCommand::ArmState => {
-                let state = robot.state();
-                if let Ok(state) = state {
-                    stream
-                        .write_all(format!("{:?}", state).as_bytes())
-                        .map_err(|e| RobotException::NetworkError(e.to_string()))
-                } else {
-                    state.map(|_| ())
-                }
+            RobotCommand::SetSpeed { speed } => robot.set_speed(speed).map(map),
+            RobotCommand::MoveJoint { joint, speed } => robot.move_joint(&&joint, speed).map(map),
+            RobotCommand::MoveJointRel { joint, speed } => {
+                robot.move_joint_rel(&joint, speed).map(map)
             }
-            RobotCommand::Pause => robot.pause(),
-            RobotCommand::Resume => robot.resume(),
-            RobotCommand::SetLoad { m, x } => robot.set_load(LoadState { m, x, i: [0.0; 9] }),
-            RobotCommand::SetSpeed { speed } => robot.set_speed(speed),
-            RobotCommand::MoveJoint { joint, speed } => robot.move_joint(&&joint, speed),
-            RobotCommand::MoveJointRel { joint, speed } => robot.move_joint_rel(&joint, speed),
             RobotCommand::MoveLinearWithEuler { pose, speed } => {
                 let (tran, rot) = pose.split_at(3);
-                robot.move_linear_with_euler(
-                    tran.try_into().unwrap(),
-                    rot.try_into().unwrap(),
-                    speed,
-                )
+                robot
+                    .move_linear_with_euler(
+                        tran.try_into().unwrap(),
+                        rot.try_into().unwrap(),
+                        speed,
+                    )
+                    .map(map)
             }
             RobotCommand::MoveLinearWithEulerRel { pose, speed } => {
                 let (tran, rot) = pose.split_at(3);
-                robot.move_rel(
-                    MotionType::Cartesian(Pose::Euler(
-                        tran.try_into().unwrap(),
-                        rot.try_into().unwrap(),
-                    )),
-                    speed,
-                )
+                robot
+                    .move_rel(
+                        MotionType::Cartesian(Pose::Euler(
+                            tran.try_into().unwrap(),
+                            rot.try_into().unwrap(),
+                        )),
+                        speed,
+                    )
+                    .map(map)
             }
             RobotCommand::MovePathFromFile { path, speed } => {
-                robot.move_path_from_file(&path, speed)
+                robot.move_path_from_file(&path, speed).map(map)
             }
-        };
-
-        if let Err(e) = result {
-            stream
-                .write_all(format!("Error: {}", e).as_bytes())
-                .map_err(|e| RobotException::NetworkError(e.to_string()))?;
-            println!("Error handling command: {}", e);
-            continue;
         }
+        .map_err(|e| format!("[Error:{}]", e));
+
+        stream.write_all(serde_json::to_string(&result).unwrap().as_bytes())?;
     }
     Ok(())
 }
