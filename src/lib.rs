@@ -1,6 +1,5 @@
 #![feature(adt_const_params)]
 
-mod ffi;
 mod network;
 mod robot;
 mod robot_error;
