@@ -706,7 +706,7 @@ checksum = "b5aba8db14291edd000dfcc4d620c7ebfb122c613afb886ca8803fa4e128a20a"
 
 [[package]]
 name = "libhans"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "bincode",
  "bitflags 2.9.0",
@@ -718,6 +718,7 @@ dependencies = [
  "nalgebra",
  "num-derive",
  "num-traits",
+ "paste",
  "pyo3",
  "robot_behavior",
  "serde",
@@ -1181,12 +1182,11 @@ dependencies = [
 
 [[package]]
 name = "robot_behavior"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75f929f56b8e16ebad5478fb4d6d1a76840957afa52bf47117a81e5502846676"
+version = "0.3.6"
 dependencies = [
  "libc",
  "nalgebra",
+ "paste",
  "plotters",
  "pyo3",
  "serde",
