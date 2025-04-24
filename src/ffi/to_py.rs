@@ -20,8 +20,8 @@ pub struct PyHansRobot(HansRobot);
 impl PyHansRobot {
     /// 初始化一个机器人对象，此时的机器人对象未连接到机器人
     #[new]
-    fn new() -> Self {
-        PyHansRobot(HansRobot::default())
+    fn new(ip: &str) -> Self {
+        PyHansRobot(HansRobot::new(ip))
     }
 
     fn __repr__(&self) -> String {
