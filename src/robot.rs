@@ -299,8 +299,8 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
             MotionType::Joint(_) => {
                 let path_config = StartPushMovePathJ {
                     path_name: path_name.into(),
-                    speed: 25.,
-                    radius: 5.,
+                    speed,
+                    radius: 2.,
                 };
                 self.robot_impl.start_push_move_path_j((0, path_config))?;
                 for point in path {
