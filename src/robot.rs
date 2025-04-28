@@ -330,9 +330,9 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
             MotionType::Cartesian(_) => {
                 let path_config = StartPushMovePathL {
                     path_name: path_name.into(),
-                    vel: 25.,
-                    acc: 100.,
-                    radius: 5.,
+                    vel: 100.,
+                    acc: 2500.,
+                    jeck: 1_000_000.,
                     ucs_name: "Base".into(),
                     tcp_name: "Tcp".into(),
                 };
@@ -413,9 +413,9 @@ impl ArmPreplannedMotionExt<HANS_DOF> for HansRobot {
             MotionType::Cartesian(_) => {
                 let path_config = StartPushMovePathL {
                     path_name: path_name.into(),
-                    vel: 25.,
-                    acc: 100.,
-                    radius: 5.,
+                    vel: 100.,
+                    acc: 2500.,
+                    jeck: 1_000_000.,
                     ucs_name: "Base".into(),
                     tcp_name: "Tcp".into(),
                 };
