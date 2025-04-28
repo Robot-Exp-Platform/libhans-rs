@@ -5,7 +5,9 @@ use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use libhans::{
     CommandSerde, CommandSubmit, DispatchFn, HANS_ASCII, HANS_DOF, HansRobot, PORT_IF, ROPLAT_ASCII,
 };
-use robot_behavior::{RobotBehavior, RobotException};
+use robot_behavior::{
+    ArmPreplannedMotion, ArmPreplannedMotionExt, MotionType, RobotBehavior, RobotException,
+};
 use std::collections::HashMap;
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
@@ -82,6 +84,10 @@ fn cli_root(
             let _ = robot.disable();
             println!("Disabled");
         }
+        RootCommand::Stop => {
+            let _ = robot.stop();
+            println!("Robot stopped");
+        }
         RootCommand::RobotImpl => {
             *cli_state = CliState::RobotImpl;
         }
@@ -91,19 +97,19 @@ fn cli_root(
         }
         RootCommand::Move(args) => match (args.relative, args.joints, args.linear) {
             (true, Some(joints), None) => {
-                robot.move_joint_rel(joints)?;
+                robot.move_joint_rel(&joints, 0.05)?;
                 println!("Moved joints for {:?}", joints);
             }
             (true, None, Some(linear)) => {
-                robot.move_linear_rel_with_euler(linear)?;
+                robot.move_rel(MotionType::Cartesian(linear.into()), 0.05)?;
                 println!("Moved linear for {:?}", linear);
             }
             (false, Some(joints), None) => {
-                robot.move_joint(joints)?;
+                robot.move_joint(&joints, 0.05)?;
                 println!("Moved joints to {:?}", joints);
             }
             (false, None, Some(linear)) => {
-                robot.move_linear_with_euler(linear)?;
+                robot.move_to(MotionType::Cartesian(linear.into()), 0.05)?;
                 println!("Moved linear to {:?}", linear);
             }
             _ => unimplemented!("Move command is not implemented"),
@@ -113,7 +119,7 @@ fn cli_root(
             let mut buffer = [0; 48]; // 6 f64 values, each 8 bytes
             tcp.read_exact(&mut buffer).unwrap();
             let linear: [f64; 6] = unsafe { std::ptr::read(buffer.as_ptr() as *const [f64; 6]) };
-            robot.move_linear_with_euler(linear)?;
+            robot.move_to(MotionType::Cartesian(linear.into()), 0.05)?;
             tcp.write_all(b"ok").unwrap();
             println!("Moved linear to {:?}", linear);
         }
@@ -227,8 +233,8 @@ fn cli_key_board(
             continue;
         }
         println!("joints: {:?}, linear: {:?}", joints, linear);
-        robot.move_joint_rel(joints)?;
-        robot.move_linear_rel_with_euler(linear)?;
+        robot.move_joint_rel(&joints, 0.05)?;
+        robot.move_to(MotionType::Cartesian(linear.into()), 0.05)?;
         println!("Move over");
         stdout.flush().unwrap();
     }
@@ -244,6 +250,7 @@ enum RootCommand {
     Disconnect,
     Enable,
     Disable,
+    Stop,
     RobotImpl,
     #[command(arg_required_else_help = true)]
     #[command(group(

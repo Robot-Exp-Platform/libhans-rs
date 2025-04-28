@@ -28,6 +28,7 @@ colored = "3.0"
 cxx = { version = "1.0", optional = true }
 crossterm = "0.29"
 paste = "1.0"
+clap = { version = "*", features = ["derive"] }
 robot_behavior = { path = "crates/robot_behavior", version = "0.3.6" }
 libhans_derive = { path = "src/libhans_derive", version = "0.1.1" }
 
