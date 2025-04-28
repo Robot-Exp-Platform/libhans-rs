@@ -1,8 +1,7 @@
-use robot_behavior::RobotException;
+use robot_behavior::{RobotException, RobotResult};
 
 use super::command::{Command, CommandRequest, CommandResponse};
 use super::command_serde::CommandSerde;
-use crate::HansResult;
 use crate::RobotMode;
 use crate::robot_error::RobotError;
 use crate::robot_param::HANS_DOF;
@@ -58,13 +57,13 @@ pub type ReadCmdJointCurResponse = CommandResponse<{ Command::ReadCmdJointCur },
 pub type ReadActJointCurResponse = CommandResponse<{ Command::ReadActJointCur }, [f64; HANS_DOF]>;
 pub type ReadTcpVelocityResponse = CommandResponse<{ Command::ReadTcpVelocity }, (f64, f64)>;
 
-#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
+#[derive(Default, libhans_derive::CommandSerde, Debug, PartialEq)]
 pub struct Load {
     pub mass: f64,
     pub centroid: [f64; 3],
 }
 
-#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
+#[derive(Default, libhans_derive::CommandSerde, Debug, PartialEq)]
 pub struct EmergencyInfo {
     pub is_estop: bool,
     pub esto_code: u8,
@@ -72,7 +71,7 @@ pub struct EmergencyInfo {
     pub safety_guard_code: u8,
 }
 
-#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
+#[derive(Default, libhans_derive::CommandSerde, Debug, PartialEq)]
 pub struct RobotFlag {
     pub is_move: bool,
     pub is_enable: bool,
@@ -88,15 +87,15 @@ pub struct RobotFlag {
     pub is_arrived: bool,
 }
 
-#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
+#[derive(Default, libhans_derive::CommandSerde, Debug, PartialEq)]
 pub struct ActPose {
     pub joint: [f64; HANS_DOF],
     pub pose_o_to_ee: [f64; 6],
-    pose_f_to_ee: [f64; 6],
-    pose_u_to_ee: [f64; 6],
+    pub pose_f_to_ee: [f64; 6],
+    pub pose_u_to_ee: [f64; 6],
 }
 
-#[derive(Default, command_derive::CommandSerde, Debug, PartialEq)]
+#[derive(Default, libhans_derive::CommandSerde, Debug, PartialEq)]
 pub struct CmdPose {
     joint: [f64; HANS_DOF],
     pose_o_to_ee: [f64; 6],

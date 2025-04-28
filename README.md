@@ -1,24 +1,5 @@
 # Readme
 
-大族机器人驱动的 rust 实现
+[English](README.md) | [简体中文](README_cn.md)
 
-大族机器人的控制柜指令集为复杂指令集，指令形式较为多样，而其中部分指令并不常用，故在本驱动实现中只实现了常用指令的封装，不常用指令
-
-## 指令
-
-大族机器人的指令主要分为以下几类
-
-- 初始化指令
-- 轴组控制指令
-- 脚本控制指令
-- 电箱控制指令
-- 状态读取与设置指令
-- 位置、速度、电流读取指令
-- 坐标转换计算指令
-- 工具坐标与用户坐标读取指令
-- 力控控制指令
-- 通用运动类控制指令
-- 连续轨迹运动类控制指令
-- Servo 运动类控制指令
-- 相对跟踪运动类控制指令
-- 其他指令
+This library is part of the [Universal Robot Driver Project](https://github.com/Robot-Exp-Platform/robot_behavior)! We are committed to providing Rust driver support for more robotic platforms! **Unifying driver interfaces across different robot models, reducing the learning curve for robotics, and delivering more efficient robot control solutions!**

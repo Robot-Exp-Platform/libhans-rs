@@ -1,9 +1,9 @@
-use robot_behavior::deserialize_error;
+use robot_behavior::{RobotResult, deserialize_error};
 use serde::{Deserialize, Serialize};
 use std::marker::ConstParamTy;
 
 use super::command_serde::CommandSerde;
-use crate::{exception::HansResult, robot_error::RobotError};
+use crate::robot_error::RobotError;
 
 #[derive(ConstParamTy, PartialEq, Eq, Serialize, Deserialize, Debug)]
 pub enum Command {
@@ -144,7 +144,7 @@ impl<const C: Command> CommandSerde for CommandHander<C> {
     fn to_string(&self) -> String {
         format!("{:?}", C)
     }
-    fn from_str(data: &str) -> HansResult<Self> {
+    fn from_str(data: &str) -> RobotResult<Self> {
         if data == format!("{:?}", C) {
             Ok(CommandHander {})
         } else {
@@ -170,7 +170,7 @@ where
             format!("{:?},{},;", C, self.data.to_string())
         }
     }
-    fn from_str(data: &str) -> HansResult<Self> {
+    fn from_str(data: &str) -> RobotResult<Self> {
         let command = format!("{:?}", C);
         if data.starts_with(&command) {
             let data = D::from_str(&data[command.len()..data.len() - 2])?;
@@ -200,7 +200,7 @@ where
     fn to_string(&self) -> String {
         format!("{:?},{},;", C, self.status.as_ref().unwrap().to_string())
     }
-    fn from_str(data: &str) -> HansResult<Self> {
+    fn from_str(data: &str) -> RobotResult<Self> {
         let command = format!("{:?}", C);
         if data.starts_with(&(command.clone() + ",OK,")) {
             let data = &data[&command.len() + 3..data.len() - 2];

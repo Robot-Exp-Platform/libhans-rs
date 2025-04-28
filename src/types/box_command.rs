@@ -1,8 +1,7 @@
 use super::command::{Command, CommandRequest, CommandResponse};
 use super::command_serde::CommandSerde;
-use crate::HansResult;
 use crate::robot_error::RobotError;
-use robot_behavior::RobotException;
+use robot_behavior::{RobotException, RobotResult};
 
 pub type ReadBoxInfoRequest = CommandRequest<{ Command::ReadBoxInfo }, u8>;
 pub type ReadBoxCIRequest<const N: usize> = CommandRequest<{ Command::ReadBoxCI }, [bool; N]>;
@@ -36,7 +35,7 @@ pub type ReadEIResponse<const N: usize> = CommandResponse<{ Command::ReadEI }, [
 pub type ReadEOResponse<const N: usize> = CommandResponse<{ Command::ReadEO }, [bool; N]>;
 pub type ReadEAIResponse = CommandResponse<{ Command::ReadEAI }, f64>;
 
-#[derive(Default, command_derive::CommandSerde)]
+#[derive(Default, libhans_derive::CommandSerde)]
 pub struct BoxInfo {
     is_connected: bool,
     is_voltage48v_on: bool,

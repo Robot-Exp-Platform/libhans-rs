@@ -5,9 +5,8 @@ use std::io::{Read, Write};
 use std::net::{Shutdown, TcpStream};
 use std::time::Duration;
 
-use robot_behavior::RobotException;
+use robot_behavior::{RobotException, RobotResult};
 
-use crate::exception::HansResult;
 use crate::types::CommandSerde;
 
 pub const PORT_IF: u16 = 10003;
@@ -37,7 +36,7 @@ impl Network {
     }
 
     /// 连接到指定 IP 与端口
-    pub fn connect(&mut self, _host: &str, _port: u16) -> HansResult<()> {
+    pub fn connect(&mut self, _host: &str, _port: u16) -> RobotResult<()> {
         #[cfg(not(feature = "no_robot"))]
         {
             let addr = format!("{}:{}", _host, _port);
@@ -53,7 +52,7 @@ impl Network {
     }
 
     /// 断开 TCP 连接
-    pub fn disconnect(&mut self) -> HansResult<()> {
+    pub fn disconnect(&mut self) -> RobotResult<()> {
         if let Some(stream) = &self.socket {
             stream.shutdown(Shutdown::Both)?;
         }
@@ -68,7 +67,7 @@ impl Network {
     }
 
     /// 发送命令并等待返回
-    pub fn send_and_recv<R, S>(&mut self, cmd: &R) -> HansResult<S>
+    pub fn send_and_recv<R, S>(&mut self, cmd: &R) -> RobotResult<S>
     where
         R: CommandSerde,
         S: CommandSerde,
