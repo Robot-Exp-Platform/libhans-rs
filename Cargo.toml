@@ -1,6 +1,6 @@
 [package]
 name = "libhans"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2024"
 authors = ["Yixing <yanjizhou312@163.com>"]
 readme = "README.md"
@@ -35,15 +35,14 @@ colored = "3.0"
 cxx = { version = "1.0", optional = true }
 crossterm = "0.29"
 paste = "1.0"
-robot_behavior = { path = "crates/robot_behavior", version = "0.3.6", features = [
-    "to_py",
-] }
+robot_behavior = { path = "crates/robot_behavior", version = "0.4.5" }
 libhans_derive = { path = "src/libhans_derive", version = "0.1.1" }
 
 [features]
 # default = ["no_robot"]
 default = ["to_py"]
 no_robot = []
+ffi = []
 to_c = []
-to_py = ["pyo3"]
-to_cxx = ["cxx"]
+to_py = ["pyo3", "robot_behavior/to_py", "ffi"]
+to_cxx = ["cxx", "ffi", "robot_behavior/to_cxx"]

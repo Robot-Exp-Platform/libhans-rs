@@ -213,7 +213,7 @@ pub struct StartPushMovePathL {
     pub path_name: String,
     pub vel: f64,
     pub acc: f64,
-    pub radius: f64,
+    pub jeck: f64,
     pub ucs_name: String,
     pub tcp_name: String,
 }

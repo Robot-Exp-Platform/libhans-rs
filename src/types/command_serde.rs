@@ -58,7 +58,7 @@ impl CommandSerde for bool {
 
 impl CommandSerde for u8 {
     fn to_string(&self) -> String {
-        format!("{}", self)
+        format!("{self}")
     }
     fn from_str(data: &str) -> RobotResult<Self> {
         data.parse().map_err(deserialize_error::<u8, _>(data))
@@ -70,7 +70,7 @@ impl CommandSerde for u8 {
 
 impl CommandSerde for u16 {
     fn to_string(&self) -> String {
-        format!("{}", self)
+        format!("{self}")
     }
     fn from_str(data: &str) -> RobotResult<Self> {
         data.parse().map_err(deserialize_error::<u16, _>(data))
@@ -82,7 +82,7 @@ impl CommandSerde for u16 {
 
 impl CommandSerde for f64 {
     fn to_string(&self) -> String {
-        format!("{}", self)
+        format!("{self}")
     }
     fn from_str(data: &str) -> RobotResult<Self> {
         data.parse().map_err(deserialize_error::<f64, _>(data))
