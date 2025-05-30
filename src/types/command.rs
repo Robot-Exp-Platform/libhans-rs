@@ -142,10 +142,10 @@ pub struct CommandResponse<const C: Command, S> {
 
 impl<const C: Command> CommandSerde for CommandHander<C> {
     fn to_string(&self) -> String {
-        format!("{:?}", C)
+        format!("{C:?}")
     }
     fn from_str(data: &str) -> RobotResult<Self> {
-        if data == format!("{:?}", C) {
+        if data == format!("{C:?}") {
             Ok(CommandHander {})
         } else {
             Err(deserialize_error::<CommandHander<C>, _>(data)(()))
@@ -165,13 +165,13 @@ where
 {
     fn to_string(&self) -> String {
         if std::any::TypeId::of::<D>() == std::any::TypeId::of::<()>() {
-            format!("{:?},;", C)
+            format!("{C:?},;")
         } else {
             format!("{:?},{},;", C, self.data.to_string())
         }
     }
     fn from_str(data: &str) -> RobotResult<Self> {
-        let command = format!("{:?}", C);
+        let command = format!("{C:?}");
         if data.starts_with(&command) {
             let data = D::from_str(&data[command.len()..data.len() - 2])?;
             Ok(CommandRequest {
@@ -201,7 +201,7 @@ where
         format!("{:?},{},;", C, self.status.as_ref().unwrap().to_string())
     }
     fn from_str(data: &str) -> RobotResult<Self> {
-        let command = format!("{:?}", C);
+        let command = format!("{C:?}");
         if data.starts_with(&(command.clone() + ",OK,")) {
             let data = &data[&command.len() + 3..data.len() - 2];
             let data = S::from_str(if data.is_empty() { "" } else { &data[1..] })?;
@@ -217,7 +217,7 @@ where
                 status: Err(data),
             })
         } else {
-            println!("data: {:?}", data);
+            println!("data: {data:?}");
             Err(deserialize_error::<CommandResponse<C, S>, _>(data)(()))
         }
     }

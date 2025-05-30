@@ -8,10 +8,8 @@ fn main() -> RobotResult<()> {
 
     println!("{}", robot.version());
 
-    robot
-        .move_joint_rel(&[0.1, 0., 0., 0., 0., 0.], 0.1)
-        .unwrap();
+    robot.move_joint_rel(&[0.1, 0., 0., 0., 0., 0.]).unwrap();
 
-    robot.move_path_from_file("low_traj.csv", 0.1).unwrap();
+    robot.move_path_from_file("low_traj.csv").unwrap();
     Ok(())
 }

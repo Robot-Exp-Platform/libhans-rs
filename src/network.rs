@@ -39,7 +39,7 @@ impl Network {
     pub fn connect(&mut self, _host: &str, _port: u16) -> RobotResult<()> {
         #[cfg(not(feature = "no_robot"))]
         {
-            let addr = format!("{}:{}", _host, _port);
+            let addr = format!("{_host}:{_port}");
             let stream = TcpStream::connect(&addr)?;
 
             stream.set_read_timeout(Some(Duration::from_secs(3)))?;

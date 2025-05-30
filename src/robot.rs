@@ -1,33 +1,38 @@
 use std::{thread::sleep, time::Duration};
 
 use robot_behavior::{
-    ArmBehavior, ArmPreplannedMotion, ArmPreplannedMotionExt, ArmState, ControlType, LoadState,
-    MotionType, Pose, RobotBehavior, RobotException, RobotResult,
+    ArmState, Coord, LoadState, MotionType, OverrideOnce, Pose, RobotBehavior, RobotException,
+    RobotResult, behavior::*,
 };
 
-use crate::{
-    HANS_DOF, HANS_VERSION, RobotMode,
-    robot_impl::RobotImpl,
-    robot_state::RobotState,
-    types::{Load, RelJ, RelL, StartPushMovePathJ, StartPushMovePathL, WayPointEx},
-};
+use crate::{RobotMode, robot_impl::RobotImpl, robot_param::*, robot_state::RobotState, types::*};
 
-#[derive(Default)]
 pub struct HansRobot {
     pub robot_impl: RobotImpl,
     is_moving: bool,
-    speed: f64,
-    prepared_path_type: Option<MotionType<HANS_DOF>>,
+
+    coord: OverrideOnce<Coord>,
+    max_vel: OverrideOnce<[f64; HANS_DOF]>,
+    max_acc: OverrideOnce<[f64; HANS_DOF]>,
+    max_cartesian_vel: OverrideOnce<f64>,
+    max_cartesian_acc: OverrideOnce<f64>,
 }
 
 impl HansRobot {
     /// 新建一个机器人实例，使用传入的机器人 ip 与默认端口 [PORT_IF](crate::network::PORT_IF)
     pub fn new(ip: &str) -> Self {
         let robot_impl = RobotImpl::new(ip);
-        HansRobot {
+        let mut robot = HansRobot {
             robot_impl,
-            ..HansRobot::default()
-        }
+            is_moving: false,
+            coord: OverrideOnce::new(Coord::OCS),
+            max_vel: OverrideOnce::new(Self::JOINT_VEL_BOUND),
+            max_acc: OverrideOnce::new(Self::JOINT_ACC_BOUND),
+            max_cartesian_vel: OverrideOnce::new(Self::CARTESIAN_VEL_BOUND),
+            max_cartesian_acc: OverrideOnce::new(Self::CARTESIAN_ACC_BOUND),
+        };
+        let _ = robot.set_speed(0.1);
+        robot
     }
 
     /// 连接网络，使用指定的 ip 与端口
@@ -39,20 +44,12 @@ impl HansRobot {
     pub fn disconnect(&mut self) {
         self.robot_impl.disconnect();
     }
-
-    pub fn set_speed(&mut self, speed: f64) -> RobotResult<()> {
-        if self.speed != speed {
-            self.speed = speed;
-            self.robot_impl.state_set_override((0, speed))?;
-        }
-        Ok(())
-    }
 }
 
 impl RobotBehavior for HansRobot {
     type State = RobotState;
     fn version(&self) -> String {
-        format!("HansRobot v{}", HANS_VERSION)
+        format!("HansRobot v{HANS_VERSION}")
     }
 
     fn init(&mut self) -> RobotResult<()> {
@@ -137,10 +134,6 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
                 act_pose.pose_o_to_ee[0..3].try_into().unwrap(),
                 act_pose.pose_o_to_ee[3..6].try_into().unwrap(),
             )),
-            pose_f_to_ee: Some(Pose::Euler(
-                act_pose.pose_f_to_ee[0..3].try_into().unwrap(),
-                act_pose.pose_f_to_ee[3..6].try_into().unwrap(),
-            )),
             pose_ee_to_k: None,
             cartesian_vel: Some(pose_vel),
             load: None,
@@ -156,11 +149,82 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
             },
         ))
     }
+    fn set_coord(&mut self, coord: Coord) -> RobotResult<()> {
+        self.coord.set(coord);
+        Ok(())
+    }
+
+    fn set_speed(&mut self, speed: f64) -> RobotResult<()> {
+        self.max_vel.set(Self::JOINT_VEL_BOUND.map(|v| v * speed));
+        self.max_acc.set(Self::JOINT_ACC_BOUND.map(|v| v * speed));
+        self.max_cartesian_vel
+            .set(Self::CARTESIAN_VEL_BOUND * speed);
+        self.max_cartesian_acc
+            .set(Self::CARTESIAN_ACC_BOUND * speed);
+
+        self.robot_impl.state_set_override((0, speed))?;
+        Ok(())
+    }
+
+    fn with_coord(&mut self, coord: Coord) -> &mut Self {
+        self.coord.once(coord);
+        self
+    }
+    fn with_speed(&mut self, speed: f64) -> &mut Self {
+        self.max_vel.once(Self::JOINT_VEL_BOUND.map(|v| v * speed));
+        self.max_acc.once(Self::JOINT_ACC_BOUND.map(|v| v * speed));
+        self.max_cartesian_vel
+            .once(Self::CARTESIAN_VEL_BOUND * speed);
+        self.max_cartesian_acc
+            .once(Self::CARTESIAN_ACC_BOUND * speed);
+        self
+    }
+    fn with_velocity(&mut self, joint_vel: &[f64; HANS_DOF]) -> &mut Self {
+        self.max_vel.once(*joint_vel);
+        self
+    }
+    fn with_acceleration(&mut self, joint_acc: &[f64; HANS_DOF]) -> &mut Self {
+        self.max_acc.once(*joint_acc);
+        self
+    }
+    fn with_jerk(&mut self, _joint_jerk: &[f64; HANS_DOF]) -> &mut Self {
+        self
+    }
+    fn with_cartesian_velocity(&mut self, cartesian_vel: f64) -> &mut Self {
+        self.max_cartesian_vel.once(cartesian_vel);
+        self
+    }
+    fn with_cartesian_acceleration(&mut self, cartesian_acc: f64) -> &mut Self {
+        self.max_cartesian_acc.once(cartesian_acc);
+        self
+    }
+    fn with_cartesian_jerk(&mut self, _cartesian_jerk: f64) -> &mut Self {
+        self
+    }
+    fn with_rotation_velocity(&mut self, _rotation_vel: f64) -> &mut Self {
+        self
+    }
+    fn with_rotation_acceleration(&mut self, _rotation_acc: f64) -> &mut Self {
+        self
+    }
+    fn with_rotation_jerk(&mut self, _rotation_jerk: f64) -> &mut Self {
+        self
+    }
 }
 
-impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
-    fn move_to(&mut self, target: MotionType<HANS_DOF>, speed: f64) -> RobotResult<()> {
-        self.move_to_async(target, speed)?;
+impl ArmParam<HANS_DOF> for HansRobot {
+    const DH: [[f64; 4]; HANS_DOF] = HANS_ROBOT_DH;
+    const JOINT_MIN: [f64; HANS_DOF] = HANS_ROBOT_MIN_JOINTS;
+    const JOINT_MAX: [f64; HANS_DOF] = HANS_ROBOT_MAX_JOINTS;
+    const JOINT_VEL_BOUND: [f64; HANS_DOF] = HANS_ROBOT_JOINT_VEL;
+    const JOINT_ACC_BOUND: [f64; HANS_DOF] = HANS_ROBOT_JOINT_ACC;
+    const CARTESIAN_VEL_BOUND: f64 = HANS_ROBOT_MAX_CARTESIAN_VEL;
+    const CARTESIAN_ACC_BOUND: f64 = HANS_ROBOT_MAX_CARTESIAN_ACC;
+}
+
+impl ArmPreplannedMotionImpl<HANS_DOF> for HansRobot {
+    fn move_joint(&mut self, target: &[f64; HANS_DOF]) -> RobotResult<()> {
+        self.move_joint_async(target)?;
         loop {
             let state = self.robot_impl.state_read_cur_fsm(0)?;
             if state == RobotMode::StandBy {
@@ -172,20 +236,17 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_to_async(&mut self, target: MotionType<HANS_DOF>, speed: f64) -> RobotResult<()> {
+    fn move_joint_async(&mut self, target: &[f64; HANS_DOF]) -> RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
             ));
         }
         self.is_moving = true;
-
-        self.set_speed(speed)?;
-
-        match target {
-            MotionType::Joint(joint) => {
+        match self.coord.get() {
+            Coord::OCS => {
                 let move_config = WayPointEx {
-                    joint,
+                    joint: *target,
                     vel: 25.,
                     acc: 100.,
                     radius: 5.,
@@ -196,53 +257,8 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
                 };
                 self.robot_impl.move_way_point_ex((0, move_config))?;
             }
-            MotionType::Cartesian(Pose::Euler(tran, rot)) => {
-                let move_config = WayPointEx {
-                    pose: [tran[0], tran[1], tran[2], rot[0], rot[1], rot[2]],
-                    vel: 25.,
-                    acc: 100.,
-                    radius: 5.,
-                    move_mode: 1,
-                    use_joint: false,
-                    command_id: "0".into(),
-                    ..WayPointEx::default()
-                };
-                self.robot_impl.move_way_point_ex((0, move_config))?;
-            }
-            _ => {
-                return Err(RobotException::UnprocessableInstructionError(
-                    "Unsupported motion type".into(),
-                ));
-            }
-        }
-        Ok(())
-    }
-
-    fn move_rel(&mut self, rel: MotionType<HANS_DOF>, speed: f64) -> RobotResult<()> {
-        self.move_rel_async(rel, speed)?;
-        loop {
-            let state = self.robot_impl.state_read_cur_fsm(0)?;
-            if state == RobotMode::StandBy {
-                break;
-            }
-        }
-
-        self.is_moving = false;
-        Ok(())
-    }
-
-    fn move_rel_async(&mut self, rel: MotionType<HANS_DOF>, speed: f64) -> RobotResult<()> {
-        if self.is_moving() {
-            return Err(RobotException::UnprocessableInstructionError(
-                "Robot is moving, you can not push new move command".into(),
-            ));
-        }
-        self.is_moving = true;
-        self.set_speed(speed)?;
-
-        match rel {
-            MotionType::Joint(joint) => {
-                for (id, joint) in joint.iter().enumerate().take(HANS_DOF) {
+            Coord::Interial | Coord::Shot => {
+                for (id, joint) in target.iter().enumerate().take(HANS_DOF) {
                     if *joint == 0. {
                         continue;
                     }
@@ -256,8 +272,49 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
                     return Ok(());
                 }
             }
-            MotionType::Cartesian(Pose::Euler(tran, rot)) => {
-                let pose = [tran[0], tran[1], tran[2], rot[0], rot[1], rot[2]];
+            Coord::Other(_) => {
+                println!("undefined coord, use OCS as default");
+            }
+        }
+        Ok(())
+    }
+
+    fn move_cartesian(&mut self, target: &Pose) -> RobotResult<()> {
+        self.move_cartesian_async(target)?;
+        loop {
+            let state = self.robot_impl.state_read_cur_fsm(0)?;
+            if state == RobotMode::StandBy {
+                break;
+            }
+        }
+
+        self.is_moving = false;
+        Ok(())
+    }
+
+    fn move_cartesian_async(&mut self, target: &Pose) -> RobotResult<()> {
+        if self.is_moving() {
+            return Err(RobotException::UnprocessableInstructionError(
+                "Robot is moving, you can not push new move command".into(),
+            ));
+        }
+        self.is_moving = true;
+        match self.coord.get() {
+            Coord::OCS => {
+                let move_config = WayPointEx {
+                    pose: (*target).into(),
+                    vel: 25.,
+                    acc: 100.,
+                    radius: 5.,
+                    move_mode: 1,
+                    use_joint: false,
+                    command_id: "0".into(),
+                    ..WayPointEx::default()
+                };
+                self.robot_impl.move_way_point_ex((0, move_config))?;
+            }
+            Coord::Interial | Coord::Shot => {
+                let pose: [f64; 6] = (*target).into();
                 for (id, pose) in pose.iter().enumerate().take(HANS_DOF) {
                     if *pose == 0. {
                         continue;
@@ -273,16 +330,29 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
                     return Ok(());
                 }
             }
-            _ => {
-                return Err(RobotException::UnprocessableInstructionError(
-                    "Unsupported motion type".into(),
-                ));
+            Coord::Other(_) => {
+                println!("undefined coord, use OCS as default");
             }
         }
         Ok(())
     }
+}
 
-    fn move_path(&mut self, path: Vec<MotionType<HANS_DOF>>, speed: f64) -> RobotResult<()> {
+impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
+    fn move_path(&mut self, path: Vec<MotionType<HANS_DOF>>) -> RobotResult<()> {
+        self.move_path_async(path)?;
+        loop {
+            let state = self.robot_impl.state_read_cur_fsm(0)?;
+            if state == RobotMode::StandBy {
+                break;
+            }
+        }
+
+        self.is_moving = false;
+        Ok(())
+    }
+
+    fn move_path_async(&mut self, path: Vec<MotionType<HANS_DOF>>) -> RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -291,7 +361,7 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
         self.is_moving = true;
 
         let first_point = path[0];
-        self.move_to(first_point, speed)?;
+        self.move_to(first_point)?;
 
         let path_name = "my_path";
 
@@ -299,7 +369,7 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
             MotionType::Joint(_) => {
                 let path_config = StartPushMovePathJ {
                     path_name: path_name.into(),
-                    speed,
+                    speed: self.max_vel.get()[0] / Self::JOINT_VEL_BOUND[0],
                     radius: 2.,
                 };
                 self.robot_impl.start_push_move_path_j((0, path_config))?;
@@ -367,22 +437,9 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
                 ));
             }
         }
-        loop {
-            let state = self.robot_impl.state_read_cur_fsm(0)?;
-            if state == RobotMode::StandBy {
-                break;
-            }
-        }
-
-        self.is_moving = false;
         Ok(())
     }
-    fn control_with(&mut self, _: ControlType<HANS_DOF>) -> RobotResult<()> {
-        unimplemented!("control_with is not implemented")
-    }
-}
 
-impl ArmPreplannedMotionExt<HANS_DOF> for HansRobot {
     fn move_path_prepare(
         &mut self,
         path: Vec<MotionType<HANS_DOF>>,
@@ -394,7 +451,6 @@ impl ArmPreplannedMotionExt<HANS_DOF> for HansRobot {
         }
 
         let path_name = "hans_path";
-        self.prepared_path_type = Some(path[0]);
         match path[0] {
             MotionType::Joint(_) => {
                 let path_config = StartPushMovePathJ {
@@ -437,7 +493,7 @@ impl ArmPreplannedMotionExt<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_path_start(&mut self) -> robot_behavior::RobotResult<()> {
+    fn move_path_start(&mut self, start: MotionType<HANS_DOF>) -> RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -460,25 +516,19 @@ impl ArmPreplannedMotionExt<HANS_DOF> for HansRobot {
         }
         self.is_moving = true;
 
-        if let Some(motion) = self.prepared_path_type {
-            self.move_to(motion, 0.1)?;
-            match motion {
-                MotionType::Joint(_) => {
-                    self.robot_impl.move_path_j((0, path_name.to_string()))?;
-                }
-                MotionType::Cartesian(_) => {
-                    self.robot_impl.move_path_l((0, path_name.to_string()))?;
-                }
-                _ => {
-                    return Err(RobotException::UnprocessableInstructionError(
-                        "Unsupported motion type".into(),
-                    ));
-                }
+        self.move_to(start)?;
+        match start {
+            MotionType::Joint(_) => {
+                self.robot_impl.move_path_j((0, path_name.to_string()))?;
             }
-        } else {
-            return Err(RobotException::UnprocessableInstructionError(
-                "No prepared path".into(),
-            ));
+            MotionType::Cartesian(_) => {
+                self.robot_impl.move_path_l((0, path_name.to_string()))?;
+            }
+            _ => {
+                return Err(RobotException::UnprocessableInstructionError(
+                    "Unsupported motion type".into(),
+                ));
+            }
         }
 
         loop {
