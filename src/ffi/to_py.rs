@@ -1,11 +1,7 @@
-use pyo3::{
-    Bound, PyResult, pyclass, pymethods, pymodule,
-    types::{PyModule, PyModuleMethods},
-};
+use pyo3::{PyResult, pyclass, pymethods};
 use robot_behavior::{
-    LoadState, PyArmState, PyControlType, PyMotionType, PyPose, behavior::*, py_arm_behavior,
-    py_arm_param, py_arm_preplanned_motion, py_arm_preplanned_motion_ext,
-    py_arm_preplanned_motion_impl, py_robot_behavior,
+    behavior::*, py_arm_behavior, py_arm_param, py_arm_preplanned_motion,
+    py_arm_preplanned_motion_ext, py_arm_preplanned_motion_impl, py_robot_behavior,
 };
 
 use crate::{HANS_DOF, HansRobot};
@@ -69,14 +65,3 @@ py_arm_param!(PyHansRobot<{6}>(HansRobot));
 py_arm_preplanned_motion!(PyHansRobot<{6}>(HansRobot));
 py_arm_preplanned_motion_ext!(PyHansRobot<{6}>(HansRobot));
 py_arm_preplanned_motion_impl!(PyHansRobot<{6}>(HansRobot));
-
-#[pymodule]
-fn libhans(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PyHansRobot>()?;
-    m.add_class::<PyPose>()?;
-    m.add_class::<LoadState>()?;
-    m.add_class::<PyArmState>()?;
-    m.add_class::<PyMotionType>()?;
-    m.add_class::<PyControlType>()?;
-    Ok(())
-}

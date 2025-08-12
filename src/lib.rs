@@ -19,3 +19,12 @@ pub use robot_impl::{CommandSubmit, DispatchFn};
 pub use robot_mode::RobotMode;
 pub use robot_param::*;
 pub use types::CommandSerde;
+
+#[cfg(feature = "to_py")]
+#[pyo3::pymodule]
+mod libhans {
+    #[pymodule_export]
+    use super::ffi::to_py::PyHansRobot;
+    #[pymodule_export]
+    use robot_behavior::{LoadState, PyArmState, PyControlType, PyMotionType, PyPose};
+}

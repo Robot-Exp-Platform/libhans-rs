@@ -48,7 +48,7 @@ impl HansRobot {
 
 impl RobotBehavior for HansRobot {
     type State = RobotState;
-    fn version(&self) -> String {
+    fn version() -> String {
         format!("HansRobot v{HANS_VERSION}")
     }
 
