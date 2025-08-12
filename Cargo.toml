@@ -40,7 +40,7 @@ libhans_derive = { path = "src/libhans_derive", version = "0.1.1" }
 
 [features]
 # default = ["no_robot"]
-default = ["to_py"]
+default = []
 no_robot = []
 ffi = []
 to_c = []
