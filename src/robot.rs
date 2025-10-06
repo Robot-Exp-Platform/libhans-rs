@@ -1,40 +1,29 @@
-use std::{thread::sleep, time::Duration};
+use std::{marker::ConstParamTy, thread::sleep, time::Duration};
 
 use robot_behavior::{
     ArmState, Coord, LoadState, MotionType, OverrideOnce, Pose, RobotBehavior, RobotException,
     RobotResult, behavior::*,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::{RobotMode, robot_impl::RobotImpl, robot_param::*, robot_state::RobotState, types::*};
 
-pub struct HansRobot {
-    pub robot_impl: RobotImpl,
-    is_moving: bool,
+#[derive(ConstParamTy, PartialEq, Eq, Serialize, Deserialize, Debug)]
+pub enum HansType {
+    S30,
+}
+pub struct HansRobot<const T: HansType, const N: usize> {
+    pub robot_impl: RobotImpl<N>,
+    pub(crate) is_moving: bool,
 
-    coord: OverrideOnce<Coord>,
-    max_vel: OverrideOnce<[f64; HANS_DOF]>,
-    max_acc: OverrideOnce<[f64; HANS_DOF]>,
-    max_cartesian_vel: OverrideOnce<f64>,
-    max_cartesian_acc: OverrideOnce<f64>,
+    pub(crate) coord: OverrideOnce<Coord>,
+    pub(crate) max_vel: OverrideOnce<[f64; N]>,
+    pub(crate) max_acc: OverrideOnce<[f64; N]>,
+    pub(crate) max_cartesian_vel: OverrideOnce<f64>,
+    pub(crate) max_cartesian_acc: OverrideOnce<f64>,
 }
 
-impl HansRobot {
-    /// 新建一个机器人实例，使用传入的机器人 ip 与默认端口 [PORT_IF](crate::network::PORT_IF)
-    pub fn new(ip: &str) -> Self {
-        let robot_impl = RobotImpl::new(ip);
-        let mut robot = HansRobot {
-            robot_impl,
-            is_moving: false,
-            coord: OverrideOnce::new(Coord::OCS),
-            max_vel: OverrideOnce::new(Self::JOINT_VEL_BOUND),
-            max_acc: OverrideOnce::new(Self::JOINT_ACC_BOUND),
-            max_cartesian_vel: OverrideOnce::new(Self::CARTESIAN_VEL_BOUND),
-            max_cartesian_acc: OverrideOnce::new(Self::CARTESIAN_ACC_BOUND),
-        };
-        let _ = robot.set_speed(0.1);
-        robot
-    }
-
+impl<const T: HansType, const N: usize> HansRobot<T, N> {
     /// 连接网络，使用指定的 ip 与端口
     pub fn connect(&mut self, ip: &str, port: u16) {
         self.robot_impl.connect(ip, port);
@@ -46,7 +35,7 @@ impl HansRobot {
     }
 }
 
-impl RobotBehavior for HansRobot {
+impl<const T: HansType, const N: usize> RobotBehavior for HansRobot<T, N> {
     type State = RobotState;
     fn version() -> String {
         format!("HansRobot v{HANS_VERSION}")
@@ -119,13 +108,16 @@ impl RobotBehavior for HansRobot {
     }
 }
 
-impl ArmBehavior<HANS_DOF> for HansRobot {
-    fn state(&mut self) -> RobotResult<ArmState<HANS_DOF>> {
+impl<const T: HansType, const N: usize> ArmBehavior<N> for HansRobot<T, N>
+where
+    HansRobot<T, N>: ArmParam<N>,
+{
+    fn state(&mut self) -> RobotResult<ArmState<N>> {
         let act_pose = self.robot_impl.state_read_act_pos(0)?;
         let joint_vel = self.robot_impl.state_read_act_joint_vel(0)?;
         let pose_vel = self.robot_impl.state_read_act_tcp_vel(0)?;
 
-        let state = ArmState {
+        let state = ArmState::<N> {
             joint: Some(act_pose.joint),
             joint_vel: Some(joint_vel),
             joint_acc: None,
@@ -179,15 +171,15 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
             .once(Self::CARTESIAN_ACC_BOUND * speed);
         self
     }
-    fn with_velocity(&mut self, joint_vel: &[f64; HANS_DOF]) -> &mut Self {
+    fn with_velocity(&mut self, joint_vel: &[f64; N]) -> &mut Self {
         self.max_vel.once(*joint_vel);
         self
     }
-    fn with_acceleration(&mut self, joint_acc: &[f64; HANS_DOF]) -> &mut Self {
+    fn with_acceleration(&mut self, joint_acc: &[f64; N]) -> &mut Self {
         self.max_acc.once(*joint_acc);
         self
     }
-    fn with_jerk(&mut self, _joint_jerk: &[f64; HANS_DOF]) -> &mut Self {
+    fn with_jerk(&mut self, _joint_jerk: &[f64; N]) -> &mut Self {
         self
     }
     fn with_cartesian_velocity(&mut self, cartesian_vel: f64) -> &mut Self {
@@ -212,18 +204,11 @@ impl ArmBehavior<HANS_DOF> for HansRobot {
     }
 }
 
-impl ArmParam<HANS_DOF> for HansRobot {
-    const DH: [[f64; 4]; HANS_DOF] = HANS_ROBOT_DH;
-    const JOINT_MIN: [f64; HANS_DOF] = HANS_ROBOT_MIN_JOINTS;
-    const JOINT_MAX: [f64; HANS_DOF] = HANS_ROBOT_MAX_JOINTS;
-    const JOINT_VEL_BOUND: [f64; HANS_DOF] = HANS_ROBOT_JOINT_VEL;
-    const JOINT_ACC_BOUND: [f64; HANS_DOF] = HANS_ROBOT_JOINT_ACC;
-    const CARTESIAN_VEL_BOUND: f64 = HANS_ROBOT_MAX_CARTESIAN_VEL;
-    const CARTESIAN_ACC_BOUND: f64 = HANS_ROBOT_MAX_CARTESIAN_ACC;
-}
-
-impl ArmPreplannedMotionImpl<HANS_DOF> for HansRobot {
-    fn move_joint(&mut self, target: &[f64; HANS_DOF]) -> RobotResult<()> {
+impl<const T: HansType, const N: usize> ArmPreplannedMotionImpl<N> for HansRobot<T, N>
+where
+    HansRobot<T, N>: ArmParam<N>,
+{
+    fn move_joint(&mut self, target: &[f64; N]) -> RobotResult<()> {
         self.move_joint_async(target)?;
         loop {
             let state = self.robot_impl.state_read_cur_fsm(0)?;
@@ -236,7 +221,7 @@ impl ArmPreplannedMotionImpl<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_joint_async(&mut self, target: &[f64; HANS_DOF]) -> RobotResult<()> {
+    fn move_joint_async(&mut self, target: &[f64; N]) -> RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -258,7 +243,7 @@ impl ArmPreplannedMotionImpl<HANS_DOF> for HansRobot {
                 self.robot_impl.move_way_point_ex((0, move_config))?;
             }
             Coord::Interial | Coord::Shot => {
-                for (id, joint) in target.iter().enumerate().take(HANS_DOF) {
+                for (id, joint) in target.iter().enumerate().take(N) {
                     if *joint == 0. {
                         continue;
                     }
@@ -315,7 +300,7 @@ impl ArmPreplannedMotionImpl<HANS_DOF> for HansRobot {
             }
             Coord::Interial | Coord::Shot => {
                 let pose: [f64; 6] = (*target).into();
-                for (id, pose) in pose.iter().enumerate().take(HANS_DOF) {
+                for (id, pose) in pose.iter().enumerate().take(N) {
                     if *pose == 0. {
                         continue;
                     }
@@ -338,8 +323,11 @@ impl ArmPreplannedMotionImpl<HANS_DOF> for HansRobot {
     }
 }
 
-impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
-    fn move_path(&mut self, path: Vec<MotionType<HANS_DOF>>) -> RobotResult<()> {
+impl<const T: HansType, const N: usize> ArmPreplannedMotion<N> for HansRobot<T, N>
+where
+    HansRobot<T, N>: ArmParam<N>,
+{
+    fn move_path(&mut self, path: Vec<MotionType<N>>) -> RobotResult<()> {
         self.move_path_async(path)?;
         loop {
             let state = self.robot_impl.state_read_cur_fsm(0)?;
@@ -352,7 +340,7 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_path_async(&mut self, path: Vec<MotionType<HANS_DOF>>) -> RobotResult<()> {
+    fn move_path_async(&mut self, path: Vec<MotionType<N>>) -> RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -440,10 +428,7 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_path_prepare(
-        &mut self,
-        path: Vec<MotionType<HANS_DOF>>,
-    ) -> robot_behavior::RobotResult<()> {
+    fn move_path_prepare(&mut self, path: Vec<MotionType<N>>) -> robot_behavior::RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -493,7 +478,7 @@ impl ArmPreplannedMotion<HANS_DOF> for HansRobot {
         Ok(())
     }
 
-    fn move_path_start(&mut self, start: MotionType<HANS_DOF>) -> RobotResult<()> {
+    fn move_path_start(&mut self, start: MotionType<N>) -> RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),

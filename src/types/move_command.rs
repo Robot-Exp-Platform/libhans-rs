@@ -3,21 +3,23 @@ use robot_behavior::{RobotException, RobotResult};
 use super::command::{Command, CommandRequest, CommandResponse};
 use super::command_serde::CommandSerde;
 use crate::robot_error::RobotError;
-use crate::robot_param::HANS_DOF;
 
 pub type MoveRelJRequest = CommandRequest<{ Command::MoveRelJ }, (u8, RelJ)>;
 pub type MoveRelLRequest = CommandRequest<{ Command::MoveRelL }, (u8, RelL)>;
-pub type WayPointRelRequest = CommandRequest<{ Command::WayPointRel }, (u8, WayPointRel)>;
-pub type WayPointExRequest = CommandRequest<{ Command::WayPointEx }, (u8, WayPointEx)>;
-pub type WayPointRequest = CommandRequest<{ Command::WayPoint }, (u8, WayPoint)>;
-pub type WayPoint2Request = CommandRequest<{ Command::WayPoint2 }, (u8, WayPoint2)>;
-pub type MoveJRequest = CommandRequest<{ Command::MoveJ }, (u8, MoveJ)>;
-pub type MoveLRequest = CommandRequest<{ Command::MoveL }, (u8, MoveL)>;
+pub type WayPointRelRequest<const N: usize> =
+    CommandRequest<{ Command::WayPointRel }, (u8, WayPointRel<N>)>;
+pub type WayPointExRequest<const N: usize> =
+    CommandRequest<{ Command::WayPointEx }, (u8, WayPointEx<N>)>;
+pub type WayPointRequest<const N: usize> = CommandRequest<{ Command::WayPoint }, (u8, WayPoint<N>)>;
+pub type WayPoint2Request<const N: usize> =
+    CommandRequest<{ Command::WayPoint2 }, (u8, WayPoint2<N>)>;
+pub type MoveJRequest<const N: usize> = CommandRequest<{ Command::MoveJ }, (u8, MoveJ<N>)>;
+pub type MoveLRequest<const N: usize> = CommandRequest<{ Command::MoveL }, (u8, MoveL<N>)>;
 pub type MoveCRequest = CommandRequest<{ Command::MoveC }, (u8, MoveC)>;
 pub type StartPushMovePathRequest =
     CommandRequest<{ Command::StartPushMovePath }, (u8, StartPushMovePathJ)>;
-pub type PushMovePathJRequest =
-    CommandRequest<{ Command::PushMovePathJ }, (u8, String, [f64; HANS_DOF])>;
+pub type PushMovePathJRequest<const N: usize> =
+    CommandRequest<{ Command::PushMovePathJ }, (u8, String, [f64; N])>;
 pub type EndPushMovePathRequest = CommandRequest<{ Command::EndPushMovePath }, (u8, String)>;
 pub type MovePathRequest = CommandRequest<{ Command::MovePath }, (u8, String)>;
 pub type ReadMovePathStateRequest = CommandRequest<{ Command::ReadMovePathState }, (u8, String)>;
@@ -33,7 +35,8 @@ pub type PushMovePathsRequest<const N: usize> =
 pub type MovePathLRequest = CommandRequest<{ Command::MovePathL }, (u8, String)>;
 pub type SetMovePathOverrideRequest = CommandRequest<{ Command::SetMovePathOverride }, (u8, f64)>;
 pub type StartServoRequest = CommandRequest<{ Command::StartServo }, (u8, f64, f64)>;
-pub type PushServoJRequest = CommandRequest<{ Command::PushServoJ }, (u8, [f64; HANS_DOF])>;
+pub type PushServoJRequest<const N: usize> =
+    CommandRequest<{ Command::PushServoJ }, (u8, [f64; N])>;
 pub type PushServoPRequest = CommandRequest<{ Command::PushServoP }, (u8, [[f64; 6]; 3])>;
 
 pub type MoveRelJResponse = CommandResponse<{ Command::MoveRelJ }, ()>;
@@ -80,15 +83,15 @@ pub struct RelL {
 
 // TODO: 路点指令有两种指令形式，部分情况下部分内容不作为输入参数
 
-#[derive(Default, libhans_derive::CommandSerde)]
-pub struct WayPointRel {
+#[derive(libhans_derive::CommandSerde)]
+pub struct WayPointRel<const N: usize> {
     pub move_mode: u8,
     pub use_point_list: bool,
     pub pose: [f64; 6],
-    pub joint: [f64; HANS_DOF],
+    pub joint: [f64; N],
     pub rel_move_mode: u8,
-    pub is_move: [bool; HANS_DOF],
-    pub dis: [f64; HANS_DOF],
+    pub is_move: [bool; N],
+    pub dis: [f64; N],
     pub tcp_name: String,
     pub ucs_name: String,
     pub vel: f64,
@@ -101,10 +104,10 @@ pub struct WayPointRel {
     pub command_id: String,
 }
 
-#[derive(Default, libhans_derive::CommandSerde)]
-pub struct WayPointEx {
+#[derive(libhans_derive::CommandSerde)]
+pub struct WayPointEx<const N: usize> {
     pub pose: [f64; 6],
-    pub joint: [f64; HANS_DOF],
+    pub joint: [f64; N],
     pub ucs: [f64; 6],
     pub tcp: [f64; 6],
     pub vel: f64,
@@ -118,10 +121,30 @@ pub struct WayPointEx {
     pub command_id: String,
 }
 
-#[derive(Default, libhans_derive::CommandSerde)]
-pub struct WayPoint {
+impl<const N: usize> Default for WayPointEx<N> {
+    fn default() -> Self {
+        WayPointEx {
+            pose: [0.0; 6],
+            joint: [0.0; N],
+            ucs: [0.0; 6],
+            tcp: [0.0; 6],
+            vel: 0.1,
+            acc: 0.1,
+            radius: 0.0,
+            move_mode: 1,
+            use_joint: false,
+            is_seek_di: false,
+            di_id: 0,
+            di_value: false,
+            command_id: String::new(),
+        }
+    }
+}
+
+#[derive(libhans_derive::CommandSerde)]
+pub struct WayPoint<const N: usize> {
     pub pose: [f64; 6],
-    pub joint: [f64; HANS_DOF],
+    pub joint: [f64; N],
     pub tcp_name: String,
     pub ucs_name: String,
     pub vel: f64,
@@ -135,10 +158,10 @@ pub struct WayPoint {
     pub command_id: String,
 }
 
-#[derive(Default, libhans_derive::CommandSerde)]
-pub struct WayPoint2 {
+#[derive(libhans_derive::CommandSerde)]
+pub struct WayPoint2<const N: usize> {
     pub pose1: [f64; 6],
-    pub joint: [f64; HANS_DOF],
+    pub joint: [f64; N],
     pub tcp_name: String,
     pub ucs_name: String,
     pub vel: f64,
@@ -153,10 +176,10 @@ pub struct WayPoint2 {
     pub command_id: String,
 }
 
-#[derive(Default, libhans_derive::CommandSerde)]
-pub struct MoveJ {
+#[derive(libhans_derive::CommandSerde)]
+pub struct MoveJ<const N: usize> {
     pub pose: [f64; 6],
-    pub joint: [f64; HANS_DOF],
+    pub joint: [f64; N],
     pub ucs_name: String,
     pub tcp_name: String,
     pub vel: f64,
@@ -169,10 +192,10 @@ pub struct MoveJ {
     pub command_id: String,
 }
 
-#[derive(Default, libhans_derive::CommandSerde)]
-pub struct MoveL {
+#[derive(libhans_derive::CommandSerde)]
+pub struct MoveL<const N: usize> {
     pub pose: [f64; 6],
-    pub joint: [f64; HANS_DOF],
+    pub joint: [f64; N],
     pub ucs_name: String,
     pub tcp_name: String,
     pub vel: f64,

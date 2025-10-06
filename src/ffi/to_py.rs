@@ -4,22 +4,20 @@ use robot_behavior::{
     py_arm_preplanned_motion_ext, py_arm_preplanned_motion_impl, py_robot_behavior,
 };
 
-use crate::{HANS_DOF, HansRobot};
+use crate::{HANS_DOF, HansS30};
 
-/// # HansRobot
-/// new(ip: str) -> PyHansRobot
-#[pyclass(name = "HansRobot")]
-pub struct PyHansRobot(HansRobot);
+#[pyclass(name = "HansS30")]
+pub struct PyHansS30(HansS30);
 
 #[pymethods]
-impl PyHansRobot {
+impl PyHansS30 {
     #[new]
     fn new(ip: &str) -> Self {
-        PyHansRobot(HansRobot::new(ip))
+        PyHansS30(HansS30::new(ip))
     }
 
     fn __repr__(&self) -> String {
-        "HansRobot".to_string()
+        "HansS30".to_string()
     }
 
     fn connect(&mut self, ip: &str, port: u16) {
@@ -59,9 +57,9 @@ impl PyHansRobot {
     }
 }
 
-py_robot_behavior!(PyHansRobot(HansRobot));
-py_arm_behavior!(PyHansRobot<{6}>(HansRobot));
-py_arm_param!(PyHansRobot<{6}>(HansRobot));
-py_arm_preplanned_motion!(PyHansRobot<{6}>(HansRobot));
-py_arm_preplanned_motion_ext!(PyHansRobot<{6}>(HansRobot));
-py_arm_preplanned_motion_impl!(PyHansRobot<{6}>(HansRobot));
+py_robot_behavior!(PyHansS30(HansS30));
+py_arm_behavior!(PyHansS30<{6}>(HansS30));
+py_arm_param!(PyHansS30<{6}>(HansS30));
+py_arm_preplanned_motion!(PyHansS30<{6}>(HansS30));
+py_arm_preplanned_motion_ext!(PyHansS30<{6}>(HansS30));
+py_arm_preplanned_motion_impl!(PyHansS30<{6}>(HansS30));

@@ -1028,7 +1028,7 @@ class ArmRealtimeControlExt:
         以闭包方式实时齐次矩阵运动，返回(齐次矩阵目标, 是否结束)。
         """
 
-class HansRobot(
+class HansS30(
     Arm, ArmPreplannedMotion, ArmPreplannedMotionImpl, ArmPreplannedMotionExt
 ):
     """

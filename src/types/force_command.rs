@@ -13,8 +13,8 @@ pub type HRSetMaxSearchVelocitiesRequest =
 pub type HRSetForceControlStrategyRequest =
     CommandRequest<{ Command::HRSetForceControlStrategy }, (u8, u8)>;
 pub type SetFTPositionRequest = CommandRequest<{ Command::SetFTPosition }, (u8, [f64; 6])>;
-pub type HRSetPIDControlParamsRequest =
-    CommandRequest<{ Command::HRSetPIDControlParams }, (u8, [f64; 6])>;
+pub type HRSetPIDControlParamsRequest<const N: usize> =
+    CommandRequest<{ Command::HRSetPIDControlParams }, (u8, [f64; N])>;
 pub type HRSetMassParamsRequest = CommandRequest<{ Command::HRSetMassParams }, (u8, [f64; 6])>;
 pub type HRSetDampParamsRequest = CommandRequest<{ Command::HRSetDampParams }, (u8, [f64; 6])>;
 pub type HRSetStiffParamsRequest = CommandRequest<{ Command::HRSetStiffParams }, (u8, [f64; 6])>;

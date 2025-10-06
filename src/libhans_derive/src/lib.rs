@@ -8,6 +8,8 @@ extern crate proc_macro;
 pub fn robot_serde_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
+    let generics = input.generics.clone();
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let fields = if let syn::Data::Struct(s) = &input.data {
         &s.fields
     } else {
@@ -70,7 +72,7 @@ pub fn robot_serde_derive(input: TokenStream) -> TokenStream {
     });
 
     let expanded = quote! {
-        impl CommandSerde for #name {
+        impl #impl_generics CommandSerde for #name #ty_generics #where_clause {
             fn to_string(&self) -> String {
                 vec![#(#to_string_impl),*].join(",")
             }

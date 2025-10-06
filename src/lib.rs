@@ -1,5 +1,6 @@
 #![feature(adt_const_params)]
 
+mod hans_s;
 mod network;
 mod robot;
 mod robot_error;
@@ -12,6 +13,7 @@ mod types;
 #[cfg(feature = "ffi")]
 mod ffi;
 
+pub use hans_s::*;
 pub use network::*;
 pub use robot::HansRobot;
 pub use robot_error::RobotError;
@@ -24,7 +26,7 @@ pub use types::CommandSerde;
 #[pyo3::pymodule]
 mod libhans {
     #[pymodule_export]
-    use super::ffi::to_py::PyHansRobot;
+    use super::ffi::to_py::PyHansS30;
     #[pymodule_export]
     use robot_behavior::{LoadState, PyArmState, PyControlType, PyMotionType, PyPose};
 }
