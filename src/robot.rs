@@ -1,8 +1,8 @@
 use std::{marker::ConstParamTy, thread::sleep, time::Duration};
 
 use robot_behavior::{
-    ArmState, Coord, LoadState, MotionType, OverrideOnce, Pose, RobotBehavior, RobotException,
-    RobotResult, behavior::*,
+    ArmState, Coord, LoadState, MotionType, OverrideOnce, Pose, Robot, RobotException, RobotResult,
+    behavior::*,
 };
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +35,7 @@ impl<const T: HansType, const N: usize> HansRobot<T, N> {
     }
 }
 
-impl<const T: HansType, const N: usize> RobotBehavior for HansRobot<T, N> {
+impl<const T: HansType, const N: usize> Robot for HansRobot<T, N> {
     type State = RobotState;
     fn version() -> String {
         format!("HansRobot v{HANS_VERSION}")
@@ -108,7 +108,7 @@ impl<const T: HansType, const N: usize> RobotBehavior for HansRobot<T, N> {
     }
 }
 
-impl<const T: HansType, const N: usize> ArmBehavior<N> for HansRobot<T, N>
+impl<const T: HansType, const N: usize> Arm<N> for HansRobot<T, N>
 where
     HansRobot<T, N>: ArmParam<N>,
 {
@@ -121,7 +121,7 @@ where
             joint: Some(act_pose.joint),
             joint_vel: Some(joint_vel),
             joint_acc: None,
-            tau: None,
+            torque: None,
             pose_o_to_ee: Some(Pose::Euler(
                 act_pose.pose_o_to_ee[0..3].try_into().unwrap(),
                 act_pose.pose_o_to_ee[3..6].try_into().unwrap(),
