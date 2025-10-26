@@ -43,13 +43,13 @@ macro_rules! cmd_fn {
     };
     ($fn_name:ident, $req_type:ty, $res_type:ty; $($arg_name:ident: $arg_type:ty),*) => {
         pub fn $fn_name(&mut self, $($arg_name: $arg_type),*) -> RobotResult<()> {
-            let _: $res_type = self.network.send_and_recv(&<$req_type>::from(($($arg_name),*)))?;
+            let _: $res_type = self.network.send_and_recv(&<$req_type>::from($($arg_name),*))?;
             Ok(())
         }
     };
     ($fn_name:ident, $req_type:ty, $res_type:ty; $($arg_name:ident: $arg_type:ty),* ; $ret_type:ty) => {
         pub fn $fn_name(&mut self, $($arg_name: $arg_type),*) -> RobotResult<$ret_type> {
-            let response: $res_type = self.network.send_and_recv(&<$req_type>::from(($($arg_name),*)))?;
+            let response: $res_type = self.network.send_and_recv(&<$req_type>::from($($arg_name),*))?;
             response.status.map_err(Into::into)
         }
     };
@@ -67,20 +67,20 @@ macro_rules! cmd_fn {
     };
     ($fn_name:ident<$const_name:ident>, $req_type:ty, $res_type:ty; $($arg_name:ident: $arg_type:ty),*) => {
         pub fn $fn_name<const $const_name: usize>(&mut self, $($arg_name: $arg_type),*) -> RobotResult<()> {
-            let _: $res_type = self.network.send_and_recv(&<$req_type>::from(($($arg_name),*)))?;
+            let _: $res_type = self.network.send_and_recv(&<$req_type>::from($($arg_name),*))?;
             Ok(())
         }
     };
     ($fn_name:ident<$const_name:ident>, $req_type:ty, $res_type:ty; $($arg_name:ident: $arg_type:ty),* ; $ret_type:ty) => {
         pub fn $fn_name<const $const_name: usize>(&mut self, $($arg_name: $arg_type),*) -> RobotResult<$ret_type> {
-            let response: $res_type = self.network.send_and_recv(&<$req_type>::from(($($arg_name),*)))?;
+            let response: $res_type = self.network.send_and_recv(&<$req_type>::from($($arg_name),*))?;
             response.status.map_err(Into::into)
         }
     };
 }
 
 impl<const N: usize> RobotImpl<N> {
-    /// 新建一个机器人实例，使用传入的机器人 ip 与默认端口 [PORT_IF](crate::network::PORT_IF)
+    /// 新建一个机器人实例，使用传入的机器人 ip 与默认端口 [`PORT_IF`](crate::network::PORT_IF)
     pub fn new(ip: &str) -> Self {
         let network = Network::from_defult_port(ip);
         RobotImpl { network }

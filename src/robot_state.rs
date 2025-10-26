@@ -341,7 +341,7 @@ mod tests {
             robot_state,
             serde_json::from_value::<RobotState>(serde_json::to_value(&robot_state).unwrap())
                 .unwrap()
-        )
+        );
     }
 
     use serde::{Deserialize, Serialize};
@@ -361,7 +361,7 @@ mod tests {
         let test_struct_json = r#"{"Value":"0.0"}"#;
 
         // 测试 JSON -> Struct
-        let parsed: TestStruct = serde_json::from_str(&test_struct_json).unwrap();
+        let parsed: TestStruct = serde_json::from_str(test_struct_json).unwrap();
         assert_eq!(test_struct, parsed);
 
         // 测试 Struct -> JSON
@@ -386,7 +386,7 @@ mod tests {
         let test_struct_array_json = r#"{"Values":["0.0","0.0","0.0"]}"#;
 
         // 测试 JSON -> Struct
-        let parsed: TestStructArray = serde_json::from_str(&test_struct_array_json).unwrap();
+        let parsed: TestStructArray = serde_json::from_str(test_struct_array_json).unwrap();
         assert_eq!(test_struct_array, parsed);
 
         // 测试 Struct -> JSON

@@ -8,7 +8,7 @@ pub const HANS_S30_DOF: usize = 6;
 pub type HansS30 = HansRobot<{ HansType::S30 }, 6>;
 
 impl HansS30 {
-    /// 新建一个机器人实例，使用传入的机器人 ip 与默认端口 [PORT_IF](crate::network::PORT_IF)
+    /// 新建一个机器人实例，使用传入的机器人 ip 与默认端口 [`PORT_IF`](crate::network::PORT_IF)
     pub fn new(ip: &str) -> Self {
         let robot_impl = RobotImpl::new(ip);
         let mut robot = HansRobot {

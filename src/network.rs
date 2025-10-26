@@ -36,10 +36,10 @@ impl Network {
     }
 
     /// 连接到指定 IP 与端口
-    pub fn connect(&mut self, _host: &str, _port: u16) -> RobotResult<()> {
+    pub fn connect(&mut self, host: &str, port: u16) -> RobotResult<()> {
         #[cfg(not(feature = "no_robot"))]
         {
-            let addr = format!("{_host}:{_port}");
+            let addr = format!("{host}:{port}");
             let stream = TcpStream::connect(&addr)?;
 
             stream.set_read_timeout(Some(Duration::from_secs(3)))?;

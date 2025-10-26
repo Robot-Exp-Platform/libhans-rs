@@ -40,7 +40,7 @@ impl CommandSerde for () {
 
 impl CommandSerde for bool {
     fn to_string(&self) -> String {
-        format!("{}", if *self { 1 } else { 0 })
+        format!("{}", i32::from(*self))
     }
 
     fn from_str(data: &str) -> RobotResult<Self> {
@@ -151,7 +151,7 @@ where
 {
     fn to_string(&self) -> String {
         self.iter()
-            .map(|x| x.to_string())
+            .map(CommandSerde::to_string)
             .collect::<Vec<_>>()
             .join(",")
     }

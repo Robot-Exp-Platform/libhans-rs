@@ -28,7 +28,7 @@ pub fn robot_serde_derive(input: TokenStream) -> TokenStream {
     let mut from_str_blocks = Vec::new();
     let mut field_inits = Vec::new();
 
-    for field in fields.iter() {
+    for field in fields {
         let field_ident = &field.ident;
         let field_ty = &field.ty;
 
