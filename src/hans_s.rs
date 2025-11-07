@@ -26,7 +26,6 @@ impl HansS30 {
 }
 
 impl<const T: HansType, const N: usize> ArmParam<HANS_S30_DOF> for HansRobot<T, N> {
-    const DH: [[f64; 4]; HANS_S30_DOF] = HANS_ROBOT_DH;
     const JOINT_MIN: [f64; HANS_S30_DOF] = [-360.; HANS_S30_DOF];
     const JOINT_MAX: [f64; HANS_S30_DOF] = [360.; HANS_S30_DOF];
     const JOINT_VEL_BOUND: [f64; HANS_S30_DOF] = [120., 120., 120., 180., 180., 180.];

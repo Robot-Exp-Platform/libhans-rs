@@ -380,9 +380,7 @@ mod tests {
 
     #[test]
     fn check_serde_with_array() {
-        let test_struct_array = TestStructArray {
-            values: [0.0, 0.0, 0.0],
-        };
+        let test_struct_array = TestStructArray { values: [0.0, 0.0, 0.0] };
         let test_struct_array_json = r#"{"Values":["0.0","0.0","0.0"]}"#;
 
         // 测试 JSON -> Struct

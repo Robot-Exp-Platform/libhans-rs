@@ -133,13 +133,8 @@ where
         Ok(state)
     }
     fn set_load(&mut self, load: LoadState) -> RobotResult<()> {
-        self.robot_impl.state_set_payload((
-            0,
-            Load {
-                mass: load.m,
-                centroid: load.x,
-            },
-        ))
+        self.robot_impl
+            .state_set_payload((0, Load { mass: load.m, centroid: load.x }))
     }
     fn set_coord(&mut self, coord: Coord) -> RobotResult<()> {
         self.coord.set(coord);
@@ -242,17 +237,13 @@ where
                 };
                 self.robot_impl.move_way_point_ex((0, move_config))?;
             }
-            Coord::Interial | Coord::Shot => {
+            Coord::Inertial | Coord::Relative => {
                 for (id, joint) in target.iter().enumerate().take(N) {
                     if *joint == 0. {
                         continue;
                     }
                     let dir = *joint > 0.;
-                    let move_config = RelJ {
-                        id: id as u8,
-                        dir,
-                        dis: joint.abs(),
-                    };
+                    let move_config = RelJ { id: id as u8, dir, dis: joint.abs() };
                     self.robot_impl.move_joint_rel((0, move_config))?;
                     return Ok(());
                 }
@@ -298,19 +289,14 @@ where
                 };
                 self.robot_impl.move_way_point_ex((0, move_config))?;
             }
-            Coord::Interial | Coord::Shot => {
+            Coord::Inertial | Coord::Relative => {
                 let pose: [f64; 6] = (*target).into();
                 for (id, pose) in pose.iter().enumerate().take(N) {
                     if *pose == 0. {
                         continue;
                     }
                     let dir = *pose >= 0.;
-                    let move_config = RelL {
-                        id: id as u8,
-                        dir,
-                        dis: pose.abs(),
-                        coord: 0,
-                    };
+                    let move_config = RelL { id: id as u8, dir, dis: pose.abs(), coord: 0 };
                     self.robot_impl.move_line_rel((0, move_config))?;
                     return Ok(());
                 }
@@ -438,11 +424,8 @@ where
         let path_name = "hans_path";
         match path[0] {
             MotionType::Joint(_) => {
-                let path_config = StartPushMovePathJ {
-                    path_name: path_name.into(),
-                    speed: 25.,
-                    radius: 5.,
-                };
+                let path_config =
+                    StartPushMovePathJ { path_name: path_name.into(), speed: 25., radius: 5. };
                 self.robot_impl.start_push_move_path_j((0, path_config))?;
                 for point in path {
                     if let MotionType::Joint(joint) = point {

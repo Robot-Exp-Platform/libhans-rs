@@ -267,11 +267,7 @@ impl<const N: usize> CommandSerde for MovePaths<N> {
         for point in points.iter_mut().take(N) {
             *point = CommandSerde::from_str(iter.next().unwrap())?;
         }
-        Ok(MovePaths {
-            path_name,
-            move_mode,
-            points,
-        })
+        Ok(MovePaths { path_name, move_mode, points })
     }
 
     fn try_default() -> Self {

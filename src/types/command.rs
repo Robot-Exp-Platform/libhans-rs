@@ -174,19 +174,13 @@ where
         let command = format!("{C:?}");
         if data.starts_with(&command) {
             let data = D::from_str(&data[command.len()..data.len() - 2])?;
-            Ok(CommandRequest {
-                _handler: CommandHander {},
-                data,
-            })
+            Ok(CommandRequest { _handler: CommandHander {}, data })
         } else {
             Err(deserialize_error::<CommandRequest<C, D>, _>(data)(()))
         }
     }
     fn try_default() -> Self {
-        CommandRequest {
-            _handler: CommandHander {},
-            data: D::try_default(),
-        }
+        CommandRequest { _handler: CommandHander {}, data: D::try_default() }
     }
     fn num_args() -> usize {
         D::num_args()
@@ -205,27 +199,18 @@ where
         if data.starts_with(&(command.clone() + ",OK,")) {
             let data = &data[&command.len() + 3..data.len() - 2];
             let data = S::from_str(if data.is_empty() { "" } else { &data[1..] })?;
-            Ok(CommandResponse {
-                _handler: CommandHander {},
-                status: Ok(data),
-            })
+            Ok(CommandResponse { _handler: CommandHander {}, status: Ok(data) })
         } else if data.starts_with(&(command.clone() + ",Fail,")) {
             let data = &data[&command.len() + 5..data.len() - 2];
             let data = RobotError::from_str(if data.is_empty() { "" } else { &data[1..] })?;
-            Ok(CommandResponse {
-                _handler: CommandHander {},
-                status: Err(data),
-            })
+            Ok(CommandResponse { _handler: CommandHander {}, status: Err(data) })
         } else {
             println!("data: {data:?}");
             Err(deserialize_error::<CommandResponse<C, S>, _>(data)(()))
         }
     }
     fn try_default() -> Self {
-        CommandResponse {
-            _handler: CommandHander {},
-            status: Ok(S::try_default()),
-        }
+        CommandResponse { _handler: CommandHander {}, status: Ok(S::try_default()) }
     }
     fn num_args() -> usize {
         S::num_args()
@@ -234,37 +219,25 @@ where
 
 impl<const C: Command, D> From<D> for CommandRequest<C, D> {
     fn from(data: D) -> Self {
-        CommandRequest {
-            _handler: CommandHander {},
-            data,
-        }
+        CommandRequest { _handler: CommandHander {}, data }
     }
 }
 
 impl<const C: Command, S> From<Result<S, RobotError>> for CommandResponse<C, S> {
     fn from(status: Result<S, RobotError>) -> Self {
-        CommandResponse {
-            _handler: CommandHander {},
-            status,
-        }
+        CommandResponse { _handler: CommandHander {}, status }
     }
 }
 
 impl<const C: Command, D: Default> Default for CommandRequest<C, D> {
     fn default() -> Self {
-        CommandRequest {
-            _handler: CommandHander {},
-            data: D::default(),
-        }
+        CommandRequest { _handler: CommandHander {}, data: D::default() }
     }
 }
 
 impl<const C: Command, S: Default> Default for CommandResponse<C, S> {
     fn default() -> Self {
-        CommandResponse {
-            _handler: CommandHander {},
-            status: Ok(S::default()),
-        }
+        CommandResponse { _handler: CommandHander {}, status: Ok(S::default()) }
     }
 }
 
@@ -274,10 +247,8 @@ mod test {
 
     #[test]
     fn test_command_serde() {
-        let request = CommandRequest::<{ Command::GrpEnable }, ()> {
-            _handler: CommandHander {},
-            data: (),
-        };
+        let request =
+            CommandRequest::<{ Command::GrpEnable }, ()> { _handler: CommandHander {}, data: () };
         let request_str = "GrpEnable,;";
         assert_eq!(request.to_string(), request_str);
         assert_eq!(
