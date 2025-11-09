@@ -1,6 +1,6 @@
 #![feature(adt_const_params)]
 
-mod hans_s;
+mod hans;
 mod network;
 mod robot;
 mod robot_error;
@@ -13,7 +13,7 @@ mod types;
 #[cfg(feature = "ffi")]
 mod ffi;
 
-pub use hans_s::*;
+pub use hans::*;
 pub use network::*;
 pub use robot::HansRobot;
 pub use robot_error::RobotError;

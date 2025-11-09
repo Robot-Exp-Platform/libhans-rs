@@ -1,18 +1,18 @@
-use std::{marker::ConstParamTy, thread::sleep, time::Duration};
+use std::{marker::PhantomData, thread::sleep, time::Duration};
 
 use robot_behavior::{
-    ArmState, Coord, LoadState, MotionType, OverrideOnce, Pose, Robot, RobotException, RobotResult,
-    behavior::*,
+    ArmPreplannedPath, ArmState, Coord, LoadState, MotionType, OverrideOnce, Pose, Robot,
+    RobotException, RobotResult, behavior::*,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::{RobotMode, robot_impl::RobotImpl, robot_param::*, robot_state::RobotState, types::*};
 
-#[derive(ConstParamTy, PartialEq, Eq, Serialize, Deserialize, Debug)]
-pub enum HansType {
-    S30,
+pub trait HansType {
+    const N: usize;
 }
-pub struct HansRobot<const T: HansType, const N: usize> {
+
+pub struct HansRobot<T: HansType, const N: usize> {
+    pub(crate) marker: PhantomData<T>,
     pub robot_impl: RobotImpl<N>,
     pub(crate) is_moving: bool,
 
@@ -23,7 +23,11 @@ pub struct HansRobot<const T: HansType, const N: usize> {
     pub(crate) max_cartesian_acc: OverrideOnce<f64>,
 }
 
-impl<const T: HansType, const N: usize> HansRobot<T, N> {
+impl<T: HansType, const N: usize> ArmDOF for HansRobot<T, N> {
+    const N: usize = N;
+}
+
+impl<T: HansType, const N: usize> HansRobot<T, N> {
     /// 连接网络，使用指定的 ip 与端口
     pub fn connect(&mut self, ip: &str, port: u16) {
         self.robot_impl.connect(ip, port);
@@ -35,7 +39,7 @@ impl<const T: HansType, const N: usize> HansRobot<T, N> {
     }
 }
 
-impl<const T: HansType, const N: usize> Robot for HansRobot<T, N> {
+impl<T: HansType, const N: usize> Robot for HansRobot<T, N> {
     type State = RobotState;
     fn version() -> String {
         format!("HansRobot v{HANS_VERSION}")
@@ -108,7 +112,7 @@ impl<const T: HansType, const N: usize> Robot for HansRobot<T, N> {
     }
 }
 
-impl<const T: HansType, const N: usize> Arm<N> for HansRobot<T, N>
+impl<T: HansType, const N: usize> Arm<N> for HansRobot<T, N>
 where
     HansRobot<T, N>: ArmParam<N>,
 {
@@ -199,7 +203,7 @@ where
     }
 }
 
-impl<const T: HansType, const N: usize> ArmPreplannedMotionImpl<N> for HansRobot<T, N>
+impl<T: HansType, const N: usize> ArmPreplannedMotion<N> for HansRobot<T, N>
 where
     HansRobot<T, N>: ArmParam<N>,
 {
@@ -309,12 +313,12 @@ where
     }
 }
 
-impl<const T: HansType, const N: usize> ArmPreplannedMotion<N> for HansRobot<T, N>
+impl<T: HansType, const N: usize> ArmPreplannedPath<N> for HansRobot<T, N>
 where
     HansRobot<T, N>: ArmParam<N>,
 {
-    fn move_path(&mut self, path: Vec<MotionType<N>>) -> RobotResult<()> {
-        self.move_path_async(path)?;
+    fn move_waypoints(&mut self, path: Vec<MotionType<N>>) -> RobotResult<()> {
+        self.move_waypoints_async(path)?;
         loop {
             let state = self.robot_impl.state_read_cur_fsm(0)?;
             if state == RobotMode::StandBy {
@@ -326,7 +330,7 @@ where
         Ok(())
     }
 
-    fn move_path_async(&mut self, path: Vec<MotionType<N>>) -> RobotResult<()> {
+    fn move_waypoints_async(&mut self, path: Vec<MotionType<N>>) -> RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -414,7 +418,10 @@ where
         Ok(())
     }
 
-    fn move_path_prepare(&mut self, path: Vec<MotionType<N>>) -> robot_behavior::RobotResult<()> {
+    fn move_waypoints_prepare(
+        &mut self,
+        path: Vec<MotionType<N>>,
+    ) -> robot_behavior::RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -461,7 +468,7 @@ where
         Ok(())
     }
 
-    fn move_path_start(&mut self, start: MotionType<N>) -> RobotResult<()> {
+    fn move_waypoints_start(&mut self, start: MotionType<N>) -> RobotResult<()> {
         if self.is_moving() {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
