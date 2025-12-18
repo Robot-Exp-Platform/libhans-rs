@@ -24,7 +24,7 @@ impl HansS30 {
             max_cartesian_vel: OverrideOnce::new(Self::CARTESIAN_VEL_BOUND),
             max_cartesian_acc: OverrideOnce::new(Self::CARTESIAN_ACC_BOUND),
         };
-        let _ = robot.set_speed(0.1);
+        let _ = robot.set_scale(0.1);
         robot
     }
 }

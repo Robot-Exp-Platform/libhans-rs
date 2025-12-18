@@ -76,12 +76,24 @@ impl<T: HansType, const N: usize> Robot for HansRobot<T, N> {
         Ok(())
     }
 
-    fn is_moving(&mut self) -> bool {
+    fn is_moving(&mut self) -> RobotResult<bool> {
         if !self.is_moving {
-            return false;
+            return Ok(false);
         }
         self.is_moving = self.robot_impl.state_read_cur_fsm(0).unwrap() != RobotMode::StandBy;
-        self.is_moving
+        Ok(self.is_moving)
+    }
+
+    fn waiting_for_finish(&mut self) -> RobotResult<()> {
+        loop {
+            let state = self.robot_impl.state_read_cur_fsm(0)?;
+            if state == RobotMode::StandBy {
+                break;
+            }
+        }
+
+        self.is_moving = false;
+        Ok(())
     }
 
     fn stop(&mut self) -> RobotResult<()> {
@@ -145,15 +157,15 @@ where
         Ok(())
     }
 
-    fn set_speed(&mut self, speed: f64) -> RobotResult<()> {
-        self.max_vel.set(Self::JOINT_VEL_BOUND.map(|v| v * speed));
-        self.max_acc.set(Self::JOINT_ACC_BOUND.map(|v| v * speed));
+    fn set_scale(&mut self, scale: f64) -> RobotResult<()> {
+        self.max_vel.set(Self::JOINT_VEL_BOUND.map(|v| v * scale));
+        self.max_acc.set(Self::JOINT_ACC_BOUND.map(|v| v * scale));
         self.max_cartesian_vel
-            .set(Self::CARTESIAN_VEL_BOUND * speed);
+            .set(Self::CARTESIAN_VEL_BOUND * scale);
         self.max_cartesian_acc
-            .set(Self::CARTESIAN_ACC_BOUND * speed);
+            .set(Self::CARTESIAN_ACC_BOUND * scale);
 
-        self.robot_impl.state_set_override((0, speed))?;
+        self.robot_impl.state_set_override((0, scale))?;
         Ok(())
     }
 
@@ -161,13 +173,13 @@ where
         self.coord.once(coord);
         self
     }
-    fn with_speed(&mut self, speed: f64) -> &mut Self {
-        self.max_vel.once(Self::JOINT_VEL_BOUND.map(|v| v * speed));
-        self.max_acc.once(Self::JOINT_ACC_BOUND.map(|v| v * speed));
+    fn with_scale(&mut self, scale: f64) -> &mut Self {
+        self.max_vel.once(Self::JOINT_VEL_BOUND.map(|v| v * scale));
+        self.max_acc.once(Self::JOINT_ACC_BOUND.map(|v| v * scale));
         self.max_cartesian_vel
-            .once(Self::CARTESIAN_VEL_BOUND * speed);
+            .once(Self::CARTESIAN_VEL_BOUND * scale);
         self.max_cartesian_acc
-            .once(Self::CARTESIAN_ACC_BOUND * speed);
+            .once(Self::CARTESIAN_ACC_BOUND * scale);
         self
     }
     fn with_velocity(&mut self, joint_vel: &[f64; N]) -> &mut Self {
@@ -209,19 +221,11 @@ where
 {
     fn move_joint(&mut self, target: &[f64; N]) -> RobotResult<()> {
         self.move_joint_async(target)?;
-        loop {
-            let state = self.robot_impl.state_read_cur_fsm(0)?;
-            if state == RobotMode::StandBy {
-                break;
-            }
-        }
-
-        self.is_moving = false;
-        Ok(())
+        self.waiting_for_finish()
     }
 
     fn move_joint_async(&mut self, target: &[f64; N]) -> RobotResult<()> {
-        if self.is_moving() {
+        if self.is_moving()? {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
             ));
@@ -261,19 +265,11 @@ where
 
     fn move_cartesian(&mut self, target: &Pose) -> RobotResult<()> {
         self.move_cartesian_async(target)?;
-        loop {
-            let state = self.robot_impl.state_read_cur_fsm(0)?;
-            if state == RobotMode::StandBy {
-                break;
-            }
-        }
-
-        self.is_moving = false;
-        Ok(())
+        self.waiting_for_finish()
     }
 
     fn move_cartesian_async(&mut self, target: &Pose) -> RobotResult<()> {
-        if self.is_moving() {
+        if self.is_moving()? {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
             ));
@@ -319,19 +315,11 @@ where
 {
     fn move_waypoints(&mut self, path: Vec<MotionType<N>>) -> RobotResult<()> {
         self.move_waypoints_async(path)?;
-        loop {
-            let state = self.robot_impl.state_read_cur_fsm(0)?;
-            if state == RobotMode::StandBy {
-                break;
-            }
-        }
-
-        self.is_moving = false;
-        Ok(())
+        self.waiting_for_finish()
     }
 
     fn move_waypoints_async(&mut self, path: Vec<MotionType<N>>) -> RobotResult<()> {
-        if self.is_moving() {
+        if self.is_moving()? {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
             ));
@@ -422,7 +410,7 @@ where
         &mut self,
         path: Vec<MotionType<N>>,
     ) -> robot_behavior::RobotResult<()> {
-        if self.is_moving() {
+        if self.is_moving()? {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
             ));
@@ -469,7 +457,7 @@ where
     }
 
     fn move_waypoints_start(&mut self, start: MotionType<N>) -> RobotResult<()> {
-        if self.is_moving() {
+        if self.is_moving()? {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
             ));
