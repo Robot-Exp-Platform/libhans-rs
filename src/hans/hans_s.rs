@@ -30,6 +30,8 @@ impl HansS30 {
 }
 
 impl ArmParam<{ _HansS30::N }> for HansRobot<_HansS30, { _HansS30::N }> {
+    const CONTROL_PERIOD: f64 = 1e-3;
+    const CARTESIAN_JERK_BOUND: f64 = 1e-3;
     const JOINT_MIN: [f64; _HansS30::N] = [-360.; _HansS30::N];
     const JOINT_MAX: [f64; _HansS30::N] = [360.; _HansS30::N];
     const JOINT_VEL_BOUND: [f64; _HansS30::N] = [120., 120., 120., 180., 180., 180.];
