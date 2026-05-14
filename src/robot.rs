@@ -1,8 +1,8 @@
 use std::{marker::PhantomData, thread::sleep, time::Duration};
 
 use robot_behavior::{
-    ArmPreplannedPath, ArmState, Coord, LoadState, MotionType, OverrideOnce, Pose, Robot,
-    RobotException, RobotResult, behavior::*,
+    ArmPreplannedPath, ArmState, ArmStateSample, Coord, LoadState, MotionType, OverrideOnce, Pose,
+    Robot, RobotException, RobotResult, behavior::*,
 };
 
 use crate::{RobotMode, robot_impl::RobotImpl, robot_param::*, robot_state::RobotState, types::*};
@@ -134,17 +134,20 @@ where
         let pose_vel = self.robot_impl.state_read_act_tcp_vel(0)?;
 
         let state = ArmState::<N> {
-            joint: Some(act_pose.joint),
-            joint_vel: Some(joint_vel),
-            joint_acc: None,
-            torque: None,
-            pose_o_to_ee: Some(Pose::Euler(
-                act_pose.pose_o_to_ee[0..3].try_into().unwrap(),
-                act_pose.pose_o_to_ee[3..6].try_into().unwrap(),
-            )),
-            pose_ee_to_k: None,
-            cartesian_vel: Some(pose_vel),
+            measured: ArmStateSample {
+                joint: Some(act_pose.joint),
+                joint_vel: Some(joint_vel),
+                joint_acc: None,
+                torque: None,
+                pose_o_to_ee: Some(Pose::Euler(
+                    act_pose.pose_o_to_ee[0..3].try_into().unwrap(),
+                    act_pose.pose_o_to_ee[3..6].try_into().unwrap(),
+                )),
+                pose_ee_to_k: None,
+                cartesian_vel: Some(pose_vel),
+            },
             load: None,
+            ..Default::default()
         };
         Ok(state)
     }

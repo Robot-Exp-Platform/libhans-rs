@@ -31,28 +31,28 @@ impl PyHansS30 {
     fn read_joint(&mut self) -> PyResult<[f64; HANS_DOF]> {
         self.0
             .state()
-            .map(|s| s.joint.unwrap_or_default())
+            .map(|s| s.measured.joint.unwrap_or_default())
             .map_err(Into::into)
     }
 
     fn read_joint_vel(&mut self) -> PyResult<[f64; HANS_DOF]> {
         self.0
             .state()
-            .map(|s| s.joint_vel.unwrap_or_default())
+            .map(|s| s.measured.joint_vel.unwrap_or_default())
             .map_err(Into::into)
     }
 
     fn read_cartesian_euler(&mut self) -> PyResult<[f64; 6]> {
         self.0
             .state()
-            .map(|s| s.pose_o_to_ee.unwrap_or_default().into())
+            .map(|s| s.measured.pose_o_to_ee.unwrap_or_default().into())
             .map_err(Into::into)
     }
 
     fn read_cartesian_vel(&mut self) -> PyResult<[f64; 6]> {
         self.0
             .state()
-            .map(|s| s.cartesian_vel.unwrap_or_default())
+            .map(|s| s.measured.cartesian_vel.unwrap_or_default())
             .map_err(Into::into)
     }
 }
