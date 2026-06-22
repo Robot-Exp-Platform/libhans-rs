@@ -1,8 +1,8 @@
-use std::{marker::PhantomData, thread::sleep, time::Duration};
+﻿use std::{marker::PhantomData, thread::sleep, time::Duration};
 
 use robot_behavior::{
-    ArmPreplannedPath, ArmState, ArmStateSample, Coord, LoadState, MotionType, OverrideOnce, Pose,
-    Robot, RobotException, RobotResult, behavior::*,
+    ArmState, Coord, JointSample, LoadState, OverrideOnce, Pose, Robot, RobotException,
+    RobotResult, SpatialSample, StateView, driver::*,
 };
 
 use crate::{RobotMode, robot_impl::RobotImpl, robot_param::*, robot_state::RobotState, types::*};
@@ -23,17 +23,12 @@ pub struct HansRobot<T: HansType, const N: usize> {
     pub(crate) max_cartesian_acc: OverrideOnce<f64>,
 }
 
-impl<T: HansType, const N: usize> ArmDOF for HansRobot<T, N> {
-    const N: usize = N;
-}
-
 impl<T: HansType, const N: usize> HansRobot<T, N> {
-    /// 连接网络，使用指定的 ip 与端口
     pub fn connect(&mut self, ip: &str, port: u16) {
         self.robot_impl.connect(ip, port);
     }
 
-    /// 断开网络连接
+    /// 鏂紑缃戠粶杩炴帴
     pub fn disconnect(&mut self) {
         self.robot_impl.disconnect();
     }
@@ -41,6 +36,8 @@ impl<T: HansType, const N: usize> HansRobot<T, N> {
 
 impl<T: HansType, const N: usize> Robot for HansRobot<T, N> {
     type State = RobotState;
+    const CONTROL_PERIOD: f64 = 1e-3;
+
     fn version() -> String {
         format!("HansRobot v{HANS_VERSION}")
     }
@@ -58,16 +55,6 @@ impl<T: HansType, const N: usize> Robot for HansRobot<T, N> {
 
     fn shutdown(&mut self) -> RobotResult<()> {
         self.disable()?;
-        Ok(())
-    }
-
-    fn enable(&mut self) -> RobotResult<()> {
-        self.robot_impl.robot_enable(0)?;
-        Ok(())
-    }
-
-    fn disable(&mut self) -> RobotResult<()> {
-        self.robot_impl.robot_disable(0)?;
         Ok(())
     }
 
@@ -126,26 +113,30 @@ impl<T: HansType, const N: usize> Robot for HansRobot<T, N> {
 
 impl<T: HansType, const N: usize> Arm<N> for HansRobot<T, N>
 where
-    HansRobot<T, N>: ArmParam<N>,
+    HansRobot<T, N>: Joints<N> + EndPoint + MoveTo<JointSpace<N>> + MoveTo<FlangeSpace>,
 {
     fn state(&mut self) -> RobotResult<ArmState<N>> {
         let act_pose = self.robot_impl.state_read_act_pos(0)?;
         let joint_vel = self.robot_impl.state_read_act_joint_vel(0)?;
         let pose_vel = self.robot_impl.state_read_act_tcp_vel(0)?;
 
-        let state = ArmState::<N> {
-            measured: ArmStateSample {
-                joint: Some(act_pose.joint),
-                joint_vel: Some(joint_vel),
-                joint_acc: None,
-                torque: None,
-                pose_o_to_ee: Some(Pose::Euler(
+        let state = ArmState {
+            joint: StateView::from_meas(JointSample {
+                q: Some(act_pose.joint),
+                dq: Some(joint_vel),
+                ddq: None,
+                tau: None,
+                dtau: None,
+            }),
+            flange: StateView::from_meas(SpatialSample {
+                pose: Some(Pose::Euler(
                     act_pose.pose_o_to_ee[0..3].try_into().unwrap(),
                     act_pose.pose_o_to_ee[3..6].try_into().unwrap(),
                 )),
-                pose_ee_to_k: None,
-                cartesian_vel: Some(pose_vel),
-            },
+                vel: Some(pose_vel),
+                acc: None,
+                wrench: None,
+            }),
             load: None,
             ..Default::default()
         };
@@ -155,12 +146,73 @@ where
         self.robot_impl
             .state_set_payload((0, Load { mass: load.m, centroid: load.x }))
     }
-    fn set_coord(&mut self, coord: Coord) -> RobotResult<()> {
+    fn get_joint(&self) -> [f64; N] {
+        [0.; N]
+    }
+
+    fn get_endpoint(&self) -> Pose {
+        Pose::default()
+    }
+
+    fn with_joint_vel(mut self, vel_bound: [f64; N]) -> Self {
+        self.max_vel.once(vel_bound);
+        self
+    }
+
+    fn with_joint_acc(mut self, acc_bound: [f64; N]) -> Self {
+        self.max_acc.once(acc_bound);
+        self
+    }
+
+    fn with_joint_jerk(self, _jerk_bound: [f64; N]) -> Self {
+        self
+    }
+
+    fn with_torque(self, _torque_bound: [f64; N]) -> Self {
+        self
+    }
+
+    fn with_torque_dot(self, _torque_dot_bound: [f64; N]) -> Self {
+        self
+    }
+
+    fn with_cartesian_vel(mut self, vel_bound: f64) -> Self {
+        self.max_cartesian_vel.once(vel_bound);
+        self
+    }
+
+    fn with_cartesian_acc(mut self, acc_bound: f64) -> Self {
+        self.max_cartesian_acc.once(acc_bound);
+        self
+    }
+
+    fn with_cartesian_jerk(self, _jerk_bound: f64) -> Self {
+        self
+    }
+
+    fn with_rotation_vel(self, _vel_bound: f64) -> Self {
+        self
+    }
+
+    fn with_rotation_acc(self, _acc_bound: f64) -> Self {
+        self
+    }
+
+    fn with_rotation_jerk(self, _jerk_bound: f64) -> Self {
+        self
+    }
+}
+
+impl<T: HansType, const N: usize> HansRobot<T, N>
+where
+    HansRobot<T, N>: Joints<N> + EndPoint,
+{
+    pub fn set_coord(&mut self, coord: Coord) -> RobotResult<()> {
         self.coord.set(coord);
         Ok(())
     }
 
-    fn set_scale(&mut self, scale: f64) -> RobotResult<()> {
+    pub fn set_scale(&mut self, scale: f64) -> RobotResult<()> {
         self.max_vel.set(Self::JOINT_VEL_BOUND.map(|v| v * scale));
         self.max_acc.set(Self::JOINT_ACC_BOUND.map(|v| v * scale));
         self.max_cartesian_vel
@@ -172,11 +224,12 @@ where
         Ok(())
     }
 
-    fn with_coord(&mut self, coord: Coord) -> &mut Self {
+    pub fn with_coord(&mut self, coord: Coord) -> &mut Self {
         self.coord.once(coord);
         self
     }
-    fn with_scale(&mut self, scale: f64) -> &mut Self {
+
+    pub fn with_scale(&mut self, scale: f64) -> &mut Self {
         self.max_vel.once(Self::JOINT_VEL_BOUND.map(|v| v * scale));
         self.max_acc.once(Self::JOINT_ACC_BOUND.map(|v| v * scale));
         self.max_cartesian_vel
@@ -185,49 +238,13 @@ where
             .once(Self::CARTESIAN_ACC_BOUND * scale);
         self
     }
-    fn with_velocity(&mut self, joint_vel: &[f64; N]) -> &mut Self {
-        self.max_vel.once(*joint_vel);
-        self
-    }
-    fn with_acceleration(&mut self, joint_acc: &[f64; N]) -> &mut Self {
-        self.max_acc.once(*joint_acc);
-        self
-    }
-    fn with_jerk(&mut self, _joint_jerk: &[f64; N]) -> &mut Self {
-        self
-    }
-    fn with_cartesian_velocity(&mut self, cartesian_vel: f64) -> &mut Self {
-        self.max_cartesian_vel.once(cartesian_vel);
-        self
-    }
-    fn with_cartesian_acceleration(&mut self, cartesian_acc: f64) -> &mut Self {
-        self.max_cartesian_acc.once(cartesian_acc);
-        self
-    }
-    fn with_cartesian_jerk(&mut self, _cartesian_jerk: f64) -> &mut Self {
-        self
-    }
-    fn with_rotation_velocity(&mut self, _rotation_vel: f64) -> &mut Self {
-        self
-    }
-    fn with_rotation_acceleration(&mut self, _rotation_acc: f64) -> &mut Self {
-        self
-    }
-    fn with_rotation_jerk(&mut self, _rotation_jerk: f64) -> &mut Self {
-        self
-    }
 }
 
-impl<T: HansType, const N: usize> ArmPreplannedMotion<N> for HansRobot<T, N>
+impl<T: HansType, const N: usize> MoveTo<JointSpace<N>> for HansRobot<T, N>
 where
-    HansRobot<T, N>: ArmParam<N>,
+    HansRobot<T, N>: Joints<N>,
 {
-    fn move_joint(&mut self, target: &[f64; N]) -> RobotResult<()> {
-        self.move_joint_async(target)?;
-        self.waiting_for_finish()
-    }
-
-    fn move_joint_async(&mut self, target: &[f64; N]) -> RobotResult<()> {
+    fn move_to(&mut self, target: [f64; N]) -> RobotResult<()> {
         if self.is_moving()? {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -237,7 +254,7 @@ where
         match self.coord.get() {
             Coord::OCS => {
                 let move_config = WayPointEx {
-                    joint: *target,
+                    joint: target,
                     vel: 25.,
                     acc: 100.,
                     radius: 5.,
@@ -265,13 +282,13 @@ where
         }
         Ok(())
     }
+}
 
-    fn move_cartesian(&mut self, target: &Pose) -> RobotResult<()> {
-        self.move_cartesian_async(target)?;
-        self.waiting_for_finish()
-    }
-
-    fn move_cartesian_async(&mut self, target: &Pose) -> RobotResult<()> {
+impl<T: HansType, const N: usize> MoveTo<FlangeSpace> for HansRobot<T, N>
+where
+    HansRobot<T, N>: EndPoint,
+{
+    fn move_to(&mut self, target: Pose) -> RobotResult<()> {
         if self.is_moving()? {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -281,7 +298,7 @@ where
         match self.coord.get() {
             Coord::OCS => {
                 let move_config = WayPointEx {
-                    pose: (*target).into(),
+                    pose: target.into(),
                     vel: 25.,
                     acc: 100.,
                     radius: 5.,
@@ -293,7 +310,7 @@ where
                 self.robot_impl.move_way_point_ex((0, move_config))?;
             }
             Coord::Inertial | Coord::Relative => {
-                let pose: [f64; 6] = (*target).into();
+                let pose: [f64; 6] = target.into();
                 for (id, pose) in pose.iter().enumerate().take(N) {
                     if *pose == 0. {
                         continue;
@@ -312,16 +329,27 @@ where
     }
 }
 
-impl<T: HansType, const N: usize> ArmPreplannedPath<N> for HansRobot<T, N>
+impl<T: HansType, const N: usize> MoveTraj<JointSpace<N>> for HansRobot<T, N>
 where
-    HansRobot<T, N>: ArmParam<N>,
+    HansRobot<T, N>: Joints<N>,
 {
-    fn move_waypoints(&mut self, path: Vec<MotionType<N>>) -> RobotResult<()> {
-        self.move_waypoints_async(path)?;
-        self.waiting_for_finish()
+    fn move_traj(&mut self, path: Vec<[f64; N]>) -> RobotResult<()> {
+        <Self as MoveTraj<JointSpace<N>>>::move_waypoints(self, path)
     }
 
-    fn move_waypoints_async(&mut self, path: Vec<MotionType<N>>) -> RobotResult<()> {
+    fn move_path<F>(&mut self, _path: F) -> RobotResult<()>
+    where
+        F: Fn(f64) -> Option<[f64; N]>,
+    {
+        Err(RobotException::UnprocessableInstructionError(
+            "Hans driver does not support continuous-path planning; use move_waypoints".into(),
+        ))
+    }
+
+    fn move_waypoints(&mut self, path: Vec<[f64; N]>) -> RobotResult<()> {
+        if path.is_empty() {
+            return Ok(());
+        }
         if self.is_moving()? {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
@@ -329,181 +357,93 @@ where
         }
         self.is_moving = true;
 
-        let first_point = path[0];
-        self.move_to(first_point)?;
+        <Self as MoveTo<JointSpace<N>>>::move_to(self, path[0])?;
 
         let path_name = "my_path";
-
-        match first_point {
-            MotionType::Joint(_) => {
-                let path_config = StartPushMovePathJ {
-                    path_name: path_name.into(),
-                    speed: self.max_vel.get()[0] / Self::JOINT_VEL_BOUND[0],
-                    radius: 2.,
-                };
-                self.robot_impl.start_push_move_path_j((0, path_config))?;
-                for point in path {
-                    if let MotionType::Joint(joint) = point {
-                        self.robot_impl
-                            .push_move_path_j((0, path_name.into(), joint))?;
-                    }
-                }
-                self.robot_impl.end_push_move_path((0, path_name.into()))?;
-                loop {
-                    let state = self
-                        .robot_impl
-                        .read_move_path_state((0, path_name.into()))?;
-                    match state {
-                        3 => break,
-                        5 => {
-                            return Err(RobotException::UnprocessableInstructionError(
-                                "Connot calculate path, Check whether the points are appropriate"
-                                    .into(),
-                            ));
-                        }
-                        _ => sleep(Duration::from_millis(100)),
-                    }
-                }
-                self.robot_impl.move_path_j((0, path_name.into()))?;
-            }
-            MotionType::Cartesian(_) => {
-                let path_config = StartPushMovePathL {
-                    path_name: path_name.into(),
-                    vel: 100.,
-                    acc: 2500.,
-                    jeck: 1_000_000.,
-                    ucs_name: "Base".into(),
-                    tcp_name: "Tcp".into(),
-                };
-                self.robot_impl.start_push_move_path_l((0, path_config))?;
-                for point in path {
-                    if let MotionType::Cartesian(Pose::Euler(tran, rot)) = point {
-                        let pose = [tran[0], tran[1], tran[2], rot[0], rot[1], rot[2]];
-                        self.robot_impl.push_move_path_l((0, pose))?;
-                    }
-                }
-                self.robot_impl.end_push_move_path((0, path_name.into()))?;
-                loop {
-                    let state = self
-                        .robot_impl
-                        .read_move_path_state((0, path_name.into()))?;
-                    match state {
-                        3 => break,
-                        5 => {
-                            return Err(RobotException::UnprocessableInstructionError(
-                                "Connot calculate path, Check whether the points are appropriate"
-                                    .into(),
-                            ));
-                        }
-                        _ => sleep(Duration::from_millis(100)),
-                    }
-                }
-                self.robot_impl.move_path_l((0, path_name.into()))?;
-            }
-            _ => {
-                return Err(RobotException::UnprocessableInstructionError(
-                    "Unsupported motion type".into(),
-                ));
-            }
-        }
-        Ok(())
-    }
-
-    fn move_waypoints_prepare(
-        &mut self,
-        path: Vec<MotionType<N>>,
-    ) -> robot_behavior::RobotResult<()> {
-        if self.is_moving()? {
-            return Err(RobotException::UnprocessableInstructionError(
-                "Robot is moving, you can not push new move command".into(),
-            ));
-        }
-
-        let path_name = "hans_path";
-        match path[0] {
-            MotionType::Joint(_) => {
-                let path_config =
-                    StartPushMovePathJ { path_name: path_name.into(), speed: 25., radius: 5. };
-                self.robot_impl.start_push_move_path_j((0, path_config))?;
-                for point in path {
-                    if let MotionType::Joint(joint) = point {
-                        self.robot_impl
-                            .push_move_path_j((0, path_name.into(), joint))?;
-                    }
-                }
-            }
-            MotionType::Cartesian(_) => {
-                let path_config = StartPushMovePathL {
-                    path_name: path_name.into(),
-                    vel: 100.,
-                    acc: 2500.,
-                    jeck: 1_000_000.,
-                    ucs_name: "Base".into(),
-                    tcp_name: "Tcp".into(),
-                };
-                self.robot_impl.start_push_move_path_l((0, path_config))?;
-                for point in path {
-                    if let MotionType::Cartesian(Pose::Euler(tran, rot)) = point {
-                        let pose = [tran[0], tran[1], tran[2], rot[0], rot[1], rot[2]];
-                        self.robot_impl.push_move_path_l((0, pose))?;
-                    }
-                }
-            }
-            _ => {
-                return Err(RobotException::UnprocessableInstructionError(
-                    "Unsupported motion type".into(),
-                ));
-            }
+        let path_config = StartPushMovePathJ {
+            path_name: path_name.into(),
+            speed: self.max_vel.get()[0] / Self::JOINT_VEL_BOUND[0],
+            radius: 2.,
+        };
+        self.robot_impl.start_push_move_path_j((0, path_config))?;
+        for joint in path {
+            self.robot_impl
+                .push_move_path_j((0, path_name.into(), joint))?;
         }
         self.robot_impl.end_push_move_path((0, path_name.into()))?;
+        wait_move_path_ready(&mut self.robot_impl, path_name)?;
+        self.robot_impl.move_path_j((0, path_name.into()))?;
         Ok(())
     }
+}
 
-    fn move_waypoints_start(&mut self, start: MotionType<N>) -> RobotResult<()> {
+impl<T: HansType, const N: usize> MoveTraj<FlangeSpace> for HansRobot<T, N>
+where
+    HansRobot<T, N>: EndPoint,
+{
+    fn move_traj(&mut self, path: Vec<Pose>) -> RobotResult<()> {
+        <Self as MoveTraj<FlangeSpace>>::move_waypoints(self, path)
+    }
+
+    fn move_path<F>(&mut self, _path: F) -> RobotResult<()>
+    where
+        F: Fn(f64) -> Option<Pose>,
+    {
+        Err(RobotException::UnprocessableInstructionError(
+            "Hans driver does not support continuous-path planning; use move_waypoints".into(),
+        ))
+    }
+
+    fn move_waypoints(&mut self, path: Vec<Pose>) -> RobotResult<()> {
+        if path.is_empty() {
+            return Ok(());
+        }
         if self.is_moving()? {
             return Err(RobotException::UnprocessableInstructionError(
                 "Robot is moving, you can not push new move command".into(),
             ));
-        }
-        let path_name = "hans_path";
-        loop {
-            let state = self
-                .robot_impl
-                .read_move_path_state((0, path_name.into()))?;
-            match state {
-                3 => break,
-                5 => {
-                    return Err(RobotException::UnprocessableInstructionError(
-                        "Connot calculate path, Check whether the points are appropriate".into(),
-                    ));
-                }
-                _ => sleep(Duration::from_millis(100)),
-            }
         }
         self.is_moving = true;
 
-        self.move_to(start)?;
-        match start {
-            MotionType::Joint(_) => {
-                self.robot_impl.move_path_j((0, path_name.to_string()))?;
-            }
-            MotionType::Cartesian(_) => {
-                self.robot_impl.move_path_l((0, path_name.to_string()))?;
-            }
-            _ => {
-                return Err(RobotException::UnprocessableInstructionError(
-                    "Unsupported motion type".into(),
-                ));
-            }
-        }
+        <Self as MoveTo<FlangeSpace>>::move_to(self, path[0])?;
 
-        loop {
-            let state = self.robot_impl.state_read_cur_fsm(0)?;
-            if state == RobotMode::StandBy {
-                break;
-            }
+        let path_name = "my_path";
+        let path_config = StartPushMovePathL {
+            path_name: path_name.into(),
+            vel: 100.,
+            acc: 2500.,
+            jeck: 1_000_000.,
+            ucs_name: "Base".into(),
+            tcp_name: "Tcp".into(),
+        };
+        self.robot_impl.start_push_move_path_l((0, path_config))?;
+        for point in path {
+            let (tran, rot) = point.euler();
+            let pose = [tran[0], tran[1], tran[2], rot[0], rot[1], rot[2]];
+            self.robot_impl.push_move_path_l((0, pose))?;
         }
-        self.is_moving = false;
+        self.robot_impl.end_push_move_path((0, path_name.into()))?;
+        wait_move_path_ready(&mut self.robot_impl, path_name)?;
+        self.robot_impl.move_path_l((0, path_name.into()))?;
         Ok(())
     }
+}
+
+fn wait_move_path_ready<const N: usize>(
+    robot_impl: &mut RobotImpl<N>,
+    path_name: &str,
+) -> RobotResult<()> {
+    loop {
+        let state = robot_impl.read_move_path_state((0, path_name.into()))?;
+        match state {
+            3 => break,
+            5 => {
+                return Err(RobotException::UnprocessableInstructionError(
+                    "Connot calculate path, Check whether the points are appropriate".into(),
+                ));
+            }
+            _ => sleep(Duration::from_millis(100)),
+        }
+    }
+    Ok(())
 }

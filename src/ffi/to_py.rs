@@ -1,7 +1,6 @@
-use pyo3::{PyResult, pyclass, pymethods};
+﻿use pyo3::{PyResult, pyclass, pymethods};
 use robot_behavior::{
-    behavior::*, py_arm_behavior, py_arm_param, py_arm_preplanned_motion,
-    py_arm_preplanned_motion_ext, py_arm_preplanned_motion_impl, py_robot_behavior,
+    behavior::*, py_arm, py_flange_move, py_flange_traj, py_joint_motion, py_robot,
 };
 
 use crate::{HANS_DOF, HansS30};
@@ -31,35 +30,34 @@ impl PyHansS30 {
     fn read_joint(&mut self) -> PyResult<[f64; HANS_DOF]> {
         self.0
             .state()
-            .map(|s| s.measured.joint.unwrap_or_default())
+            .map(|s| s.joint.meas.q.unwrap_or_default())
             .map_err(Into::into)
     }
 
     fn read_joint_vel(&mut self) -> PyResult<[f64; HANS_DOF]> {
         self.0
             .state()
-            .map(|s| s.measured.joint_vel.unwrap_or_default())
+            .map(|s| s.joint.meas.dq.unwrap_or_default())
             .map_err(Into::into)
     }
 
     fn read_cartesian_euler(&mut self) -> PyResult<[f64; 6]> {
         self.0
             .state()
-            .map(|s| s.measured.pose_o_to_ee.unwrap_or_default().into())
+            .map(|s| s.flange.meas.pose.unwrap_or_default().into())
             .map_err(Into::into)
     }
 
     fn read_cartesian_vel(&mut self) -> PyResult<[f64; 6]> {
         self.0
             .state()
-            .map(|s| s.measured.cartesian_vel.unwrap_or_default())
+            .map(|s| s.flange.meas.vel.unwrap_or_default())
             .map_err(Into::into)
     }
 }
 
-py_robot_behavior!(PyHansS30(HansS30));
-py_arm_behavior!(PyHansS30<{6}>(HansS30));
-py_arm_param!(PyHansS30<{6}>(HansS30));
-py_arm_preplanned_motion!(PyHansS30<{6}>(HansS30));
-py_arm_preplanned_motion_ext!(PyHansS30<{6}>(HansS30));
-py_arm_preplanned_motion_impl!(PyHansS30<{6}>(HansS30));
+py_robot!(PyHansS30(HansS30));
+py_arm!(PyHansS30<{6}>(HansS30));
+py_joint_motion!(PyHansS30<{6}>(HansS30));
+py_flange_move!(PyHansS30(HansS30));
+py_flange_traj!(PyHansS30(HansS30));

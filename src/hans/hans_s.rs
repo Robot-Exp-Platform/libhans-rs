@@ -1,4 +1,4 @@
-use robot_behavior::{ArmParam, Coord, OverrideOnce, behavior::*};
+use robot_behavior::{Coord, OverrideOnce, behavior::*};
 use std::{f64::consts::FRAC_PI_2, marker::PhantomData};
 
 use crate::{HansRobot, robot::HansType, robot_impl::RobotImpl};
@@ -29,15 +29,17 @@ impl HansS30 {
     }
 }
 
-impl ArmParam<{ _HansS30::N }> for HansRobot<_HansS30, { _HansS30::N }> {
-    const CONTROL_PERIOD: f64 = 1e-3;
-    const CARTESIAN_JERK_BOUND: f64 = 1e-3;
+impl Joints<{ _HansS30::N }> for HansRobot<_HansS30, { _HansS30::N }> {
     const JOINT_MIN: [f64; _HansS30::N] = [-360.; _HansS30::N];
     const JOINT_MAX: [f64; _HansS30::N] = [360.; _HansS30::N];
     const JOINT_VEL_BOUND: [f64; _HansS30::N] = [120., 120., 120., 180., 180., 180.];
     const JOINT_ACC_BOUND: [f64; _HansS30::N] = [2.5; _HansS30::N];
+}
+
+impl EndPoint for HansRobot<_HansS30, { _HansS30::N }> {
     const CARTESIAN_VEL_BOUND: f64 = 3.7;
     const CARTESIAN_ACC_BOUND: f64 = 2.0;
+    const CARTESIAN_JERK_BOUND: f64 = 1e-3;
 }
 
 pub const HANS_ROBOT_MIN_JOINTS: [f64; _HansS30::N] = [-360.; _HansS30::N];
