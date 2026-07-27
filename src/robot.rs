@@ -28,7 +28,7 @@ impl<T: HansType, const N: usize> HansRobot<T, N> {
         self.robot_impl.connect(ip, port);
     }
 
-    /// 鏂紑缃戠粶杩炴帴
+    /// Disconnects from the robot controller.
     pub fn disconnect(&mut self) {
         self.robot_impl.disconnect();
     }
