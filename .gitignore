@@ -2,3 +2,4 @@
 /scripts
 **/target
 **.csv
+.DS_Store
