@@ -67,7 +67,7 @@ impl<T: HansType, const N: usize> Robot for HansRobot<T, N> {
         if !self.is_moving {
             return Ok(false);
         }
-        self.is_moving = self.robot_impl.state_read_cur_fsm(0).unwrap() != RobotMode::StandBy;
+        self.is_moving = self.robot_impl.state_read_cur_fsm(0)? != RobotMode::StandBy;
         Ok(self.is_moving)
     }
 
