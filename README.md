@@ -77,6 +77,6 @@ There is no standalone examples directory. Start with the complete program above
 
 ## Source builds and license
 
-Registry users need no parent `drives` workspace. Checkout manifests pin development dependencies to Git revisions and require access to those sources, unlike the registry installation above.
+Neither registry users nor source checkouts need a parent `drives` workspace; checkout manifests use the same crates.io dependencies as the registry installation above.
 
 The driver and derive helper are maintained by Robot-Exp-Platform under [Apache-2.0](LICENSE); the helper includes [its license](src/libhans_derive/LICENSE). Hans is the manufacturer's name. This library does not distribute or replace controller firmware or the manufacturer's operation documentation.

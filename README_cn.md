@@ -77,6 +77,6 @@ cargo +nightly check
 
 ## 源码与许可
 
-registry 用户不需要父级 `drives` 工作区。checkout manifest 将开发依赖固定到 Git revision，需要访问对应源码，与上面的 registry 安装不同。
+registry 用户和源码 checkout 都不需要父级 `drives` 工作区；checkout manifest 与上面的 registry 安装使用相同的 crates.io 依赖。
 
 驱动与派生宏由 Robot-Exp-Platform 维护，使用 [Apache-2.0](LICENSE)；宏 crate 也附带[许可证](src/libhans_derive/LICENSE)。Hans/大族是设备厂商名称，本库不分发或替代控制器固件及厂商操作文档。
