@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README_cn.md)
 
-`libhans` 将大族控制器的文本指令协议映射到 Rust 和统一的 [`robot_behavior`](https://github.com/Robot-Exp-Platform/robot_behavior) 接口。已发布的 **`libhans 0.2.0`** 提供 `HansS30`、状态查询、目标运动及控制器专有指令。
+`libhans` 将大族控制器的文本指令协议映射到 Rust 和统一的 [`roplat_behavior`](https://github.com/Robot-Exp-Platform/roplat_behavior) 接口。已发布的 **`libhans 0.2.0`** 提供 `HansS30`、状态查询、目标运动及控制器专有指令。
 
 行为层尚不完整：**查询观测请使用 `Arm::state()`，`Robot::read_state()` 未实现**。另外，`HansS30::new()` 建立连接后会尝试把控制器速度倍率设为 `0.1`，因此构造对象不是严格只读操作。
 
@@ -18,11 +18,13 @@
 
 ```toml
 [dependencies]
-libhans = "0.2.0"
-robot_behavior = "0.6.1"
+libhans = "0.5.0"
+roplat_behavior = "0.9.0"
 ```
 
-当前 crate 需要 Rust nightly。新应用应使用行为库已发布的 0.6.1 修复。`libhans_derive 0.1.3` 是实现依赖，普通使用无需单独添加。
+> `roplat_behavior` 0.9（由 `robot_behavior` 改名）与本版本尚未发布到 crates.io；发布前请使用 [drives](https://github.com/Robot-Exp-Platform/drives) 工作区源码。变更见[迁移说明](https://github.com/Robot-Exp-Platform/roplat_behavior/blob/main/MIGRATION_zh.md)。
+
+当前 crate 需要 Rust nightly。`libhans_derive 0.1.3` 是实现依赖，普通使用无需单独添加。
 
 默认连接使用 TCP **10003**，需要可达且提供匹配大族指令接口的控制器。默认 Rust 构建直接实现协议，不链接另行安装的厂商 SDK。本版本没有已验证的主机/控制器兼容矩阵或实时周期保证。
 
@@ -40,7 +42,7 @@ manifest 还声明了 `ffi`、`to_c`，但这不代表存在完整 C SDK。Pytho
 
 ```rust,no_run
 use libhans::HansS30;
-use robot_behavior::{Arm, RobotResult};
+use roplat_behavior::{Arm, RobotResult};
 
 fn main() -> RobotResult<()> {
     let mut robot = HansS30::new("192.168.0.10");
@@ -73,7 +75,7 @@ cargo +nightly check
 - 后端未实现通用的 `ControlWith`/`AsyncControlWith` servo 会话；底层 servo 指令不等于实现该会话契约。
 - 响应解析及部分底层方法仍使用 `unwrap`，并非所有失败都转换为返回错误。
 
-本仓库没有独立 examples 目录。以上方完整程序为起点，再查阅[已发布 crate](https://crates.io/crates/libhans/0.2.0)、[指令类型](src/types)和[行为库指南](https://github.com/Robot-Exp-Platform/robot_behavior)。生成文档不可用时，可将上述源码模块作为 API 参考。
+本仓库没有独立 examples 目录。以上方完整程序为起点，再查阅[已发布 crate](https://crates.io/crates/libhans/0.2.0)、[指令类型](src/types)和[行为库指南](https://github.com/Robot-Exp-Platform/roplat_behavior)。生成文档不可用时，可将上述源码模块作为 API 参考。
 
 ## 源码与许可
 

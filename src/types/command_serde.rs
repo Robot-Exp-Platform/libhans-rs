@@ -1,6 +1,6 @@
 use std::{any::type_name, default};
 
-use robot_behavior::{RobotException, RobotResult, deserialize_error};
+use roplat_behavior::{RobotException, RobotResult, deserialize_error};
 
 use crate::robot_error::RobotError;
 

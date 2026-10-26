@@ -1,4 +1,4 @@
-use robot_behavior::{RobotResult, deserialize_error};
+use roplat_behavior::{RobotResult, deserialize_error};
 use serde::{Deserialize, Serialize};
 use std::marker::ConstParamTy;
 

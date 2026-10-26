@@ -1,7 +1,7 @@
 use super::command::{Command, CommandRequest, CommandResponse};
 use super::command_serde::CommandSerde;
 use crate::robot_error::RobotError;
-use robot_behavior::{RobotException, RobotResult};
+use roplat_behavior::{RobotException, RobotResult};
 
 pub type ReadBoxInfoRequest = CommandRequest<{ Command::ReadBoxInfo }, u8>;
 pub type ReadBoxCIRequest<const N: usize> = CommandRequest<{ Command::ReadBoxCI }, [bool; N]>;

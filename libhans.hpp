@@ -2,9 +2,9 @@
 
 // Public C++ facade for Hans robot bindings.
 // The current Rust crate exposes Python FFI; this header mirrors the shared
-// robot_behavior shape for C++ consumers and future cxx bridge work.
+// roplat_behavior shape for C++ consumers and future cxx bridge work.
 
-#include "robot_behavior.hpp"
+#include "roplat_behavior.hpp"
 
 #include <array>
 #include <memory>
@@ -12,12 +12,12 @@
 
 namespace libhans {
 
-using PoseData = robot_behavior::PoseData;
-using LoadState = robot_behavior::LoadState;
+using PoseData = roplat_behavior::PoseData;
+using LoadState = roplat_behavior::LoadState;
 
-class HansS30 : public robot_behavior::Arm<6>,
-                public robot_behavior::JointMotion<6>,
-                public robot_behavior::FlangeMotion {
+class HansS30 : public roplat_behavior::Arm<6>,
+                public roplat_behavior::JointMotion<6>,
+                public roplat_behavior::FlangeMotion {
 public:
   std::string version() const override;
   void init() override;

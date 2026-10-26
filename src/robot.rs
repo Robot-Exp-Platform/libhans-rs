@@ -1,6 +1,6 @@
-﻿use std::{marker::PhantomData, thread::sleep, time::Duration};
+use std::{marker::PhantomData, thread::sleep, time::Duration};
 
-use robot_behavior::{
+use roplat_behavior::{
     ArmState, Coord, JointSample, LoadState, OverrideOnce, Pose, Robot, RobotException,
     RobotResult, SpatialSample, StateView, driver::*,
 };
@@ -121,22 +121,17 @@ where
         let pose_vel = self.robot_impl.state_read_act_tcp_vel(0)?;
 
         let state = ArmState {
-            joint: StateView::from_meas(JointSample {
-                q: Some(act_pose.joint),
-                dq: Some(joint_vel),
-                ddq: None,
-                tau: None,
-                dtau: None,
-            }),
-            flange: StateView::from_meas(SpatialSample {
-                pose: Some(Pose::Euler(
-                    act_pose.pose_o_to_ee[0..3].try_into().unwrap(),
-                    act_pose.pose_o_to_ee[3..6].try_into().unwrap(),
-                )),
-                vel: Some(pose_vel),
-                acc: None,
-                wrench: None,
-            }),
+            joint: StateView::from_meas(
+                JointSample::EMPTY.with_q(act_pose.joint).with_dq(joint_vel),
+            ),
+            flange: StateView::from_meas(
+                SpatialSample::EMPTY
+                    .with_pose(Pose::from_euler(
+                        act_pose.pose_o_to_ee[0..3].try_into().unwrap(),
+                        act_pose.pose_o_to_ee[3..6].try_into().unwrap(),
+                    ))
+                    .with_twist((pose_vel).into()),
+            ),
             load: None,
             ..Default::default()
         };
@@ -144,7 +139,7 @@ where
     }
     fn set_load(&mut self, load: LoadState) -> RobotResult<()> {
         self.robot_impl
-            .state_set_payload((0, Load { mass: load.m, centroid: load.x }))
+            .state_set_payload((0, Load { mass: load.mass, centroid: load.center_of_mass }))
     }
     fn get_joint(&self) -> [f64; N] {
         [0.; N]
