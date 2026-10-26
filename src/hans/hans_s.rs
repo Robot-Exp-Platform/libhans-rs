@@ -1,4 +1,4 @@
-use robot_behavior::{Coord, OverrideOnce, behavior::*};
+use roplat_behavior::{Coord, OverrideOnce, behavior::*};
 use std::{f64::consts::FRAC_PI_2, marker::PhantomData};
 
 use crate::{HansRobot, robot::HansType, robot_impl::RobotImpl};

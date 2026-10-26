@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use robot_behavior::RobotException;
+use roplat_behavior::RobotException;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 #[derive(Default, Debug, Serialize_repr, Deserialize_repr, PartialEq)]

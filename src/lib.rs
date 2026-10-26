@@ -28,8 +28,8 @@ mod libhans {
     #[pymodule_export]
     use super::ffi::to_py::PyHansS30;
     #[pymodule_export]
-    use robot_behavior::{
-        LoadState, PyArmState, PyJointSample, PyJointState, PyMotionType, PyPose, PySpatialSample,
-        PySpatialState,
+    use roplat_behavior::{
+        PyArmState, PyJointSample, PyJointState, PyLoadState, PyMotionType, PyPose,
+        PySpatialSample, PySpatialState,
     };
 }
