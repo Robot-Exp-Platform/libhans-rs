@@ -1,6 +1,6 @@
 [package]
 name = "libhans"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 authors = ["Yixing <yanjizhou312@163.com>"]
 readme = "README.md"
@@ -15,7 +15,7 @@ name = "libhans"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-robot_behavior = "0.8.0"
+roplat_behavior = "0.9.0"
 pyo3 = { version = "0.28.3", optional = true, features = [
     "extension-module",
     "multiple-pymethods",
@@ -45,5 +45,5 @@ default = []
 no_robot = []
 ffi = []
 to_c = []
-to_py = ["pyo3", "robot_behavior/to_py", "ffi"]
-to_cxx = ["cxx", "ffi", "robot_behavior/to_cxx"]
+to_py = ["pyo3", "roplat_behavior/to_py", "ffi"]
+to_cxx = ["cxx", "ffi", "roplat_behavior/to_cxx"]

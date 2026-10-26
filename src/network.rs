@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use std::net::{Shutdown, TcpStream};
 use std::time::Duration;
 
-use robot_behavior::{RobotException, RobotResult};
+use roplat_behavior::{RobotException, RobotResult};
 
 use crate::types::CommandSerde;
 

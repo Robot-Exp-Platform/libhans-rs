@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README_cn.md)
 
-`libhans` maps the Hans controller's text command protocol to Rust and the common [`robot_behavior`](https://github.com/Robot-Exp-Platform/robot_behavior) interfaces. The published **`libhans 0.2.0`** provides `HansS30`, state queries, target motion, and controller-specific commands.
+`libhans` maps the Hans controller's text command protocol to Rust and the common [`roplat_behavior`](https://github.com/Robot-Exp-Platform/roplat_behavior) interfaces. The published **`libhans 0.2.0`** provides `HansS30`, state queries, target motion, and controller-specific commands.
 
 The behavior layer is incomplete: **query measurements through `Arm::state()`; `Robot::read_state()` is unimplemented**. Also, `HansS30::new()` connects and attempts to set the controller speed override to `0.1`. Constructing the object is not a strictly read-only operation.
 
@@ -18,11 +18,13 @@ Create a binary project with `cargo new hans-read-state`, then add:
 
 ```toml
 [dependencies]
-libhans = "0.2.0"
-robot_behavior = "0.6.1"
+libhans = "0.5.0"
+roplat_behavior = "0.9.0"
 ```
 
-The current crates require Rust nightly. New applications should use the published behavior 0.6.1 fixes. `libhans_derive 0.1.3` is an implementation dependency; ordinary driver users need not add it separately.
+> `roplat_behavior` 0.9 (the renamed `robot_behavior`) and this release are not on crates.io yet; until they are, build from the [drives](https://github.com/Robot-Exp-Platform/drives) workspace. See the [migration notes](https://github.com/Robot-Exp-Platform/roplat_behavior/blob/main/MIGRATION.md).
+
+The current crates require Rust nightly. `libhans_derive 0.1.3` is an implementation dependency; ordinary driver users need not add it separately.
 
 The default connection uses TCP **10003** and requires a reachable controller with the matching Hans command interface. Default Rust builds speak the protocol directly and do not link a separately installed vendor SDK. This release has no verified host/controller compatibility matrix or real-time timing guarantee.
 
@@ -40,7 +42,7 @@ Put this in `src/main.rs`. Before deliberately running it, replace the address a
 
 ```rust,no_run
 use libhans::HansS30;
-use robot_behavior::{Arm, RobotResult};
+use roplat_behavior::{Arm, RobotResult};
 
 fn main() -> RobotResult<()> {
     let mut robot = HansS30::new("192.168.0.10");
@@ -73,7 +75,7 @@ Important boundaries in 0.2.0:
 - The backend does not implement common `ControlWith`/`AsyncControlWith` servo sessions. Low-level servo commands do not provide that session contract.
 - Response parsing and some lower-level methods still use `unwrap`; not every failure becomes a returned error.
 
-There is no standalone examples directory. Start with the complete program above, then the [published crate](https://crates.io/crates/libhans/0.2.0), [command types](src/types), and [behavior guide](https://github.com/Robot-Exp-Platform/robot_behavior). The linked source modules are the API reference when generated documentation is unavailable.
+There is no standalone examples directory. Start with the complete program above, then the [published crate](https://crates.io/crates/libhans/0.2.0), [command types](src/types), and [behavior guide](https://github.com/Robot-Exp-Platform/roplat_behavior). The linked source modules are the API reference when generated documentation is unavailable.
 
 ## Source builds and license
 

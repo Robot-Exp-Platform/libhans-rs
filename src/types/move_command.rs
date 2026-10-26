@@ -1,4 +1,4 @@
-use robot_behavior::{RobotException, RobotResult};
+use roplat_behavior::{RobotException, RobotResult};
 
 use super::command::{Command, CommandRequest, CommandResponse};
 use super::command_serde::CommandSerde;

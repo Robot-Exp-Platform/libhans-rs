@@ -1,7 +1,7 @@
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::types::CommandSerde;
-use robot_behavior::{RobotResult, deserialize_error};
+use roplat_behavior::{RobotResult, deserialize_error};
 
 #[derive(Default, Debug, Serialize_repr, Deserialize_repr, PartialEq, Copy, Clone)]
 #[repr(u8)]
