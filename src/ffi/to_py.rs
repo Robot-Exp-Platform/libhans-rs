@@ -1,7 +1,6 @@
 use pyo3::{PyResult, pyclass, pymethods};
-use roplat_behavior::{
-    behavior::*, py_arm, py_flange_move, py_flange_traj, py_joint_motion, py_robot,
-};
+use roplat_behavior::behavior::*;
+use roplat_behavior_ffi::{py_arm, py_flange_move, py_flange_traj, py_joint_motion, py_robot};
 
 use crate::{HANS_DOF, HansS30};
 
@@ -31,21 +30,21 @@ impl PyHansS30 {
         self.0
             .state()
             .map(|s| s.joint.meas.q().unwrap_or_default())
-            .map_err(Into::into)
+            .map_err(roplat_behavior_ffi::py_err)
     }
 
     fn read_joint_vel(&mut self) -> PyResult<[f64; HANS_DOF]> {
         self.0
             .state()
             .map(|s| s.joint.meas.dq().unwrap_or_default())
-            .map_err(Into::into)
+            .map_err(roplat_behavior_ffi::py_err)
     }
 
     fn read_cartesian_euler(&mut self) -> PyResult<[f64; 6]> {
         self.0
             .state()
             .map(|s| s.flange.meas.pose().unwrap_or_default().into())
-            .map_err(Into::into)
+            .map_err(roplat_behavior_ffi::py_err)
     }
 
     fn read_cartesian_vel(&mut self) -> PyResult<[f64; 6]> {
@@ -58,7 +57,7 @@ impl PyHansS30 {
                     .map(<[f64; 6]>::from)
                     .unwrap_or_default()
             })
-            .map_err(Into::into)
+            .map_err(roplat_behavior_ffi::py_err)
     }
 }
 

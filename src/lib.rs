@@ -28,7 +28,7 @@ mod libhans {
     #[pymodule_export]
     use super::ffi::to_py::PyHansS30;
     #[pymodule_export]
-    use roplat_behavior::{
+    use roplat_behavior_ffi::{
         PyArmState, PyJointSample, PyJointState, PyLoadState, PyMotionType, PyPose,
         PySpatialSample, PySpatialState,
     };

@@ -1,7 +1,11 @@
-use roplat_behavior::{Coord, OverrideOnce, behavior::*};
+use roplat_behavior::{RobotResult, behavior::*, to_radians_array};
 use std::{f64::consts::FRAC_PI_2, marker::PhantomData};
 
-use crate::{HansRobot, robot::HansType, robot_impl::RobotImpl};
+use crate::{
+    HansRobot,
+    robot::{HansType, pose_from_hans},
+    robot_impl::RobotImpl,
+};
 
 pub struct _HansS30;
 impl HansType for _HansS30 {
@@ -18,22 +22,18 @@ impl HansS30 {
             marker: PhantomData,
             robot_impl,
             is_moving: false,
-            coord: OverrideOnce::new(Coord::OCS),
-            max_vel: OverrideOnce::new(Self::JOINT_VEL_BOUND),
-            max_acc: OverrideOnce::new(Self::JOINT_ACC_BOUND),
-            max_cartesian_vel: OverrideOnce::new(Self::CARTESIAN_VEL_BOUND),
-            max_cartesian_acc: OverrideOnce::new(Self::CARTESIAN_ACC_BOUND),
+            limits: MotionLimits::envelope::<Self>(),
         };
-        let _ = robot.set_scale(0.1);
+        let _ = robot.set_motion_limits(robot.motion_limits().scaled(0.1));
         robot
     }
 }
 
 impl Joints<{ _HansS30::N }> for HansRobot<_HansS30, { _HansS30::N }> {
-    const JOINT_MIN: [f64; _HansS30::N] = [-360.; _HansS30::N];
-    const JOINT_MAX: [f64; _HansS30::N] = [360.; _HansS30::N];
-    const JOINT_VEL_BOUND: [f64; _HansS30::N] = [120., 120., 120., 180., 180., 180.];
-    const JOINT_ACC_BOUND: [f64; _HansS30::N] = [2.5; _HansS30::N];
+    const JOINT_MIN: [f64; _HansS30::N] = to_radians_array(HANS_ROBOT_MIN_JOINTS);
+    const JOINT_MAX: [f64; _HansS30::N] = to_radians_array(HANS_ROBOT_MAX_JOINTS);
+    const JOINT_VEL_BOUND: [f64; _HansS30::N] = to_radians_array(HANS_ROBOT_JOINT_VEL);
+    const JOINT_ACC_BOUND: [f64; _HansS30::N] = HANS_ROBOT_JOINT_ACC;
 }
 
 impl EndPoint for HansRobot<_HansS30, { _HansS30::N }> {
@@ -42,6 +42,20 @@ impl EndPoint for HansRobot<_HansS30, { _HansS30::N }> {
     const CARTESIAN_JERK_BOUND: f64 = 1e-3;
 }
 
+impl EndPointPose for HansRobot<_HansS30, { _HansS30::N }> {
+    /// Not tracked: [`read_endpoint`](EndPointPose::read_endpoint) asks the controller.
+    fn get_endpoint(&self) -> Pose {
+        Pose::default()
+    }
+
+    fn read_endpoint(&mut self) -> RobotResult<Pose> {
+        let act = self.robot_impl.state_read_act_pos(0)?;
+        Ok(pose_from_hans(act.pose_o_to_ee))
+    }
+}
+
+// The controller's own figures: joint limits in degrees and joint speeds in
+// deg/s. The `Joints` impl above gives them in radians.
 pub const HANS_ROBOT_MIN_JOINTS: [f64; _HansS30::N] = [-360.; _HansS30::N];
 pub const HANS_ROBOT_MAX_JOINTS: [f64; _HansS30::N] = [360.; _HansS30::N];
 pub const HANS_ROBOT_MAX_LOAD: f64 = 30.0;

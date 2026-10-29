@@ -1,8 +1,8 @@
 use std::{marker::PhantomData, thread::sleep, time::Duration};
 
 use roplat_behavior::{
-    ArmState, Coord, JointSample, LoadState, OverrideOnce, Pose, Robot, RobotException,
-    RobotResult, SpatialSample, StateView, driver::*,
+    ArmState, JointSample, LoadState, MotionLimits, Pose, Robot, RobotException, RobotResult,
+    SpatialSample, StateView, driver::*,
 };
 
 use crate::{RobotMode, robot_impl::RobotImpl, robot_param::*, robot_state::RobotState, types::*};
@@ -15,12 +15,56 @@ pub struct HansRobot<T: HansType, const N: usize> {
     pub(crate) marker: PhantomData<T>,
     pub robot_impl: RobotImpl<N>,
     pub(crate) is_moving: bool,
+    /// Its `scale` is the controller's speed override; moves use the
+    /// controller's own velocity and acceleration settings.
+    pub(crate) limits: MotionLimits<N>,
+}
 
-    pub(crate) coord: OverrideOnce<Coord>,
-    pub(crate) max_vel: OverrideOnce<[f64; N]>,
-    pub(crate) max_acc: OverrideOnce<[f64; N]>,
-    pub(crate) max_cartesian_vel: OverrideOnce<f64>,
-    pub(crate) max_cartesian_acc: OverrideOnce<f64>,
+/// The controller's units are degrees for joint angles and orientations and
+/// millimetres for positions; the contract's are radians and metres. These
+/// convert at the protocol boundary.
+fn joints_to_hans<const N: usize>(q: [f64; N]) -> [f64; N] {
+    q.map(f64::to_degrees)
+}
+
+fn joints_from_hans<const N: usize>(q: [f64; N]) -> [f64; N] {
+    q.map(f64::to_radians)
+}
+
+/// `[x, y, z, rx, ry, rz]` in millimetres and degrees.
+pub(crate) fn pose_to_hans(pose: Pose) -> [f64; 6] {
+    let (p, r) = pose.euler();
+    [
+        p[0] * 1000.,
+        p[1] * 1000.,
+        p[2] * 1000.,
+        r[0].to_degrees(),
+        r[1].to_degrees(),
+        r[2].to_degrees(),
+    ]
+}
+
+pub(crate) fn pose_from_hans(pose: [f64; 6]) -> Pose {
+    Pose::from_euler(
+        [pose[0] / 1000., pose[1] / 1000., pose[2] / 1000.],
+        [
+            pose[3].to_radians(),
+            pose[4].to_radians(),
+            pose[5].to_radians(),
+        ],
+    )
+}
+
+/// A TCP velocity in mm/s and deg/s as m/s and rad/s.
+fn twist_from_hans(v: [f64; 6]) -> [f64; 6] {
+    [
+        v[0] / 1000.,
+        v[1] / 1000.,
+        v[2] / 1000.,
+        v[3].to_radians(),
+        v[4].to_radians(),
+        v[5].to_radians(),
+    ]
 }
 
 impl<T: HansType, const N: usize> HansRobot<T, N> {
@@ -36,7 +80,7 @@ impl<T: HansType, const N: usize> HansRobot<T, N> {
 
 impl<T: HansType, const N: usize> Robot for HansRobot<T, N> {
     type State = RobotState;
-    const CONTROL_PERIOD: f64 = 1e-3;
+    const CONTROL_PERIOD: Duration = Duration::from_millis(1);
 
     fn version() -> String {
         format!("HansRobot v{HANS_VERSION}")
@@ -113,7 +157,8 @@ impl<T: HansType, const N: usize> Robot for HansRobot<T, N> {
 
 impl<T: HansType, const N: usize> Arm<N> for HansRobot<T, N>
 where
-    HansRobot<T, N>: Joints<N> + EndPoint + MoveTo<JointSpace<N>> + MoveTo<FlangeSpace>,
+    HansRobot<T, N>:
+        Joints<N> + EndPoint + EndPointPose + MoveTo<JointSpace<N>> + MoveTo<FlangeSpace>,
 {
     fn state(&mut self) -> RobotResult<ArmState<N>> {
         let act_pose = self.robot_impl.state_read_act_pos(0)?;
@@ -122,15 +167,14 @@ where
 
         let state = ArmState {
             joint: StateView::from_meas(
-                JointSample::EMPTY.with_q(act_pose.joint).with_dq(joint_vel),
+                JointSample::EMPTY
+                    .with_q(joints_from_hans(act_pose.joint))
+                    .with_dq(joints_from_hans(joint_vel)),
             ),
             flange: StateView::from_meas(
                 SpatialSample::EMPTY
-                    .with_pose(Pose::from_euler(
-                        act_pose.pose_o_to_ee[0..3].try_into().unwrap(),
-                        act_pose.pose_o_to_ee[3..6].try_into().unwrap(),
-                    ))
-                    .with_twist((pose_vel).into()),
+                    .with_pose(pose_from_hans(act_pose.pose_o_to_ee))
+                    .with_twist(twist_from_hans(pose_vel).into()),
             ),
             load: None,
             ..Default::default()
@@ -138,100 +182,29 @@ where
         Ok(state)
     }
     fn set_load(&mut self, load: LoadState) -> RobotResult<()> {
-        self.robot_impl
-            .state_set_payload((0, Load { mass: load.mass, centroid: load.center_of_mass }))
+        self.robot_impl.state_set_payload((
+            0,
+            Load {
+                mass: load.mass,
+                centroid: load.center_of_mass.map(|c| c * 1000.),
+            },
+        ))
     }
     fn get_joint(&self) -> [f64; N] {
         [0.; N]
     }
 
-    fn get_endpoint(&self) -> Pose {
-        Pose::default()
+    fn motion_limits(&self) -> MotionLimits<N> {
+        self.limits
     }
 
-    fn with_joint_vel(mut self, vel_bound: [f64; N]) -> Self {
-        self.max_vel.once(vel_bound);
-        self
-    }
-
-    fn with_joint_acc(mut self, acc_bound: [f64; N]) -> Self {
-        self.max_acc.once(acc_bound);
-        self
-    }
-
-    fn with_joint_jerk(self, _jerk_bound: [f64; N]) -> Self {
-        self
-    }
-
-    fn with_torque(self, _torque_bound: [f64; N]) -> Self {
-        self
-    }
-
-    fn with_torque_dot(self, _torque_dot_bound: [f64; N]) -> Self {
-        self
-    }
-
-    fn with_cartesian_vel(mut self, vel_bound: f64) -> Self {
-        self.max_cartesian_vel.once(vel_bound);
-        self
-    }
-
-    fn with_cartesian_acc(mut self, acc_bound: f64) -> Self {
-        self.max_cartesian_acc.once(acc_bound);
-        self
-    }
-
-    fn with_cartesian_jerk(self, _jerk_bound: f64) -> Self {
-        self
-    }
-
-    fn with_rotation_vel(self, _vel_bound: f64) -> Self {
-        self
-    }
-
-    fn with_rotation_acc(self, _acc_bound: f64) -> Self {
-        self
-    }
-
-    fn with_rotation_jerk(self, _jerk_bound: f64) -> Self {
-        self
-    }
-}
-
-impl<T: HansType, const N: usize> HansRobot<T, N>
-where
-    HansRobot<T, N>: Joints<N> + EndPoint,
-{
-    pub fn set_coord(&mut self, coord: Coord) -> RobotResult<()> {
-        self.coord.set(coord);
+    /// Checks `limits` against the declared envelope and sends their `scale`
+    /// to the controller as its speed override.
+    fn set_motion_limits(&mut self, limits: MotionLimits<N>) -> RobotResult<()> {
+        limits.within(&MotionLimits::envelope::<Self>())?;
+        self.robot_impl.state_set_override((0, limits.scale))?;
+        self.limits = limits;
         Ok(())
-    }
-
-    pub fn set_scale(&mut self, scale: f64) -> RobotResult<()> {
-        self.max_vel.set(Self::JOINT_VEL_BOUND.map(|v| v * scale));
-        self.max_acc.set(Self::JOINT_ACC_BOUND.map(|v| v * scale));
-        self.max_cartesian_vel
-            .set(Self::CARTESIAN_VEL_BOUND * scale);
-        self.max_cartesian_acc
-            .set(Self::CARTESIAN_ACC_BOUND * scale);
-
-        self.robot_impl.state_set_override((0, scale))?;
-        Ok(())
-    }
-
-    pub fn with_coord(&mut self, coord: Coord) -> &mut Self {
-        self.coord.once(coord);
-        self
-    }
-
-    pub fn with_scale(&mut self, scale: f64) -> &mut Self {
-        self.max_vel.once(Self::JOINT_VEL_BOUND.map(|v| v * scale));
-        self.max_acc.once(Self::JOINT_ACC_BOUND.map(|v| v * scale));
-        self.max_cartesian_vel
-            .once(Self::CARTESIAN_VEL_BOUND * scale);
-        self.max_cartesian_acc
-            .once(Self::CARTESIAN_ACC_BOUND * scale);
-        self
     }
 }
 
@@ -246,35 +219,17 @@ where
             ));
         }
         self.is_moving = true;
-        match self.coord.get() {
-            Coord::OCS => {
-                let move_config = WayPointEx {
-                    joint: target,
-                    vel: 25.,
-                    acc: 100.,
-                    radius: 5.,
-                    move_mode: 0,
-                    use_joint: true,
-                    command_id: "0".into(),
-                    ..WayPointEx::default()
-                };
-                self.robot_impl.move_way_point_ex((0, move_config))?;
-            }
-            Coord::Inertial | Coord::Relative => {
-                for (id, joint) in target.iter().enumerate().take(N) {
-                    if *joint == 0. {
-                        continue;
-                    }
-                    let dir = *joint > 0.;
-                    let move_config = RelJ { id: id as u8, dir, dis: joint.abs() };
-                    self.robot_impl.move_joint_rel((0, move_config))?;
-                    return Ok(());
-                }
-            }
-            Coord::Other(_) => {
-                println!("undefined coord, use OCS as default");
-            }
-        }
+        let move_config = WayPointEx {
+            joint: joints_to_hans(target),
+            vel: 25.,
+            acc: 100.,
+            radius: 5.,
+            move_mode: 0,
+            use_joint: true,
+            command_id: "0".into(),
+            ..WayPointEx::default()
+        };
+        self.robot_impl.move_way_point_ex((0, move_config))?;
         Ok(())
     }
 }
@@ -290,36 +245,17 @@ where
             ));
         }
         self.is_moving = true;
-        match self.coord.get() {
-            Coord::OCS => {
-                let move_config = WayPointEx {
-                    pose: target.into(),
-                    vel: 25.,
-                    acc: 100.,
-                    radius: 5.,
-                    move_mode: 1,
-                    use_joint: false,
-                    command_id: "0".into(),
-                    ..WayPointEx::default()
-                };
-                self.robot_impl.move_way_point_ex((0, move_config))?;
-            }
-            Coord::Inertial | Coord::Relative => {
-                let pose: [f64; 6] = target.into();
-                for (id, pose) in pose.iter().enumerate().take(N) {
-                    if *pose == 0. {
-                        continue;
-                    }
-                    let dir = *pose >= 0.;
-                    let move_config = RelL { id: id as u8, dir, dis: pose.abs(), coord: 0 };
-                    self.robot_impl.move_line_rel((0, move_config))?;
-                    return Ok(());
-                }
-            }
-            Coord::Other(_) => {
-                println!("undefined coord, use OCS as default");
-            }
-        }
+        let move_config = WayPointEx {
+            pose: pose_to_hans(target),
+            vel: 25.,
+            acc: 100.,
+            radius: 5.,
+            move_mode: 1,
+            use_joint: false,
+            command_id: "0".into(),
+            ..WayPointEx::default()
+        };
+        self.robot_impl.move_way_point_ex((0, move_config))?;
         Ok(())
     }
 }
@@ -357,13 +293,13 @@ where
         let path_name = "my_path";
         let path_config = StartPushMovePathJ {
             path_name: path_name.into(),
-            speed: self.max_vel.get()[0] / Self::JOINT_VEL_BOUND[0],
+            speed: self.limits.scaled_joint().dq_max[0] / Self::JOINT_VEL_BOUND[0],
             radius: 2.,
         };
         self.robot_impl.start_push_move_path_j((0, path_config))?;
         for joint in path {
             self.robot_impl
-                .push_move_path_j((0, path_name.into(), joint))?;
+                .push_move_path_j((0, path_name.into(), joints_to_hans(joint)))?;
         }
         self.robot_impl.end_push_move_path((0, path_name.into()))?;
         wait_move_path_ready(&mut self.robot_impl, path_name)?;
@@ -413,9 +349,7 @@ where
         };
         self.robot_impl.start_push_move_path_l((0, path_config))?;
         for point in path {
-            let (tran, rot) = point.euler();
-            let pose = [tran[0], tran[1], tran[2], rot[0], rot[1], rot[2]];
-            self.robot_impl.push_move_path_l((0, pose))?;
+            self.robot_impl.push_move_path_l((0, pose_to_hans(point)))?;
         }
         self.robot_impl.end_push_move_path((0, path_name.into()))?;
         wait_move_path_ready(&mut self.robot_impl, path_name)?;
@@ -441,4 +375,32 @@ fn wait_move_path_ready<const N: usize>(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_controller_speaks_millimetres_and_degrees() {
+        let pose = pose_from_hans([1000., -500., 250., 90., 0., 0.]);
+        let p = pose.position();
+        assert!(
+            (p[0] - 1.).abs() < 1e-12 && (p[1] + 0.5).abs() < 1e-12 && (p[2] - 0.25).abs() < 1e-12
+        );
+        let (_, rpy) = pose.euler();
+        assert!((rpy[0] - std::f64::consts::FRAC_PI_2).abs() < 1e-12);
+
+        let back = pose_to_hans(pose);
+        for (a, b) in back.iter().zip([1000., -500., 250., 90., 0., 0.]) {
+            assert!((a - b).abs() < 1e-9, "{back:?}");
+        }
+        assert_eq!(joints_to_hans([std::f64::consts::PI, 0.]), [180., 0.]);
+        assert_eq!(
+            joints_from_hans([180., -90.])[1],
+            -std::f64::consts::FRAC_PI_2
+        );
+        let twist = twist_from_hans([100., 0., 0., 180., 0., 0.]);
+        assert!((twist[0] - 0.1).abs() < 1e-12 && (twist[3] - std::f64::consts::PI).abs() < 1e-12);
+    }
 }
