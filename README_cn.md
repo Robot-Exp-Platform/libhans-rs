@@ -32,9 +32,9 @@ roplat_behavior = "0.9.0"
 |---|---|
 | 默认，无 feature | 实际 TCP 请求/响应后端。 |
 | `no_robot` | 跳过 socket，生成默认协议响应，供开发使用，不是物理仿真。 |
-| `to_py` / `to_cxx` | 基于行为库 FFI 的 Python/C++ 绑定代码，不是独立语言发行包。 |
+| `to_py` | 基于 `roplat_behavior_ffi` 的 Python 绑定，不是独立语言发行包。 |
 
-manifest 还声明了 `ffi`、`to_c`，但这不代表存在完整 C SDK。Python 集成需要匹配的开发环境，C++ 集成需要相应工具链。本驱动自身没有 `roplat` feature 或原生异步控制会话。
+Python 集成需要匹配的开发环境。没有 C 或 C++ 绑定。本驱动自身没有 `roplat` feature 或原生异步控制会话。
 
 ## 第一个程序：查询机械臂状态
 

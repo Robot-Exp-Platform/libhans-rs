@@ -1,4 +1,4 @@
-use roplat_behavior::{Coord, OverrideOnce, behavior::*};
+use roplat_behavior::{RobotResult, behavior::*};
 use std::{f64::consts::FRAC_PI_2, marker::PhantomData};
 
 use crate::{HansRobot, robot::HansType, robot_impl::RobotImpl};
@@ -18,13 +18,9 @@ impl HansS30 {
             marker: PhantomData,
             robot_impl,
             is_moving: false,
-            coord: OverrideOnce::new(Coord::OCS),
-            max_vel: OverrideOnce::new(Self::JOINT_VEL_BOUND),
-            max_acc: OverrideOnce::new(Self::JOINT_ACC_BOUND),
-            max_cartesian_vel: OverrideOnce::new(Self::CARTESIAN_VEL_BOUND),
-            max_cartesian_acc: OverrideOnce::new(Self::CARTESIAN_ACC_BOUND),
+            limits: MotionLimits::envelope::<Self>(),
         };
-        let _ = robot.set_scale(0.1);
+        let _ = robot.set_motion_limits(robot.motion_limits().scaled(0.1));
         robot
     }
 }
@@ -40,6 +36,19 @@ impl EndPoint for HansRobot<_HansS30, { _HansS30::N }> {
     const CARTESIAN_VEL_BOUND: f64 = 3.7;
     const CARTESIAN_ACC_BOUND: f64 = 2.0;
     const CARTESIAN_JERK_BOUND: f64 = 1e-3;
+
+    /// Not tracked: [`read_endpoint`](EndPoint::read_endpoint) asks the controller.
+    fn get_endpoint(&self) -> Pose {
+        Pose::default()
+    }
+
+    fn read_endpoint(&mut self) -> RobotResult<Pose> {
+        let act = self.robot_impl.state_read_act_pos(0)?;
+        Ok(Pose::from_euler(
+            act.pose_o_to_ee[0..3].try_into().unwrap(),
+            act.pose_o_to_ee[3..6].try_into().unwrap(),
+        ))
+    }
 }
 
 pub const HANS_ROBOT_MIN_JOINTS: [f64; _HansS30::N] = [-360.; _HansS30::N];

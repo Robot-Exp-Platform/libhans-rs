@@ -32,9 +32,9 @@ The default connection uses TCP **10003** and requires a reachable controller wi
 |---|---|
 | Default, no features | Actual TCP request/response backend. |
 | `no_robot` | Skip sockets and generate default protocol replies for development; not physical simulation. |
-| `to_py` / `to_cxx` | Python/C++ binding code built on behavior FFI; not standalone language packages. |
+| `to_py` | Python bindings built on `roplat_behavior_ffi`; not a standalone language package. |
 
-`ffi` and `to_c` are declared too, but their presence does not establish a complete C SDK. Python integration needs a compatible development environment; C++ integration needs its toolchain. The driver itself has no `roplat` feature or native asynchronous control session.
+Python integration needs a compatible development environment. There are no C or C++ bindings. The driver itself has no `roplat` feature or native asynchronous control session.
 
 ## First program: query arm state
 

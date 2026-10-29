@@ -1,8 +1,8 @@
 use std::{marker::PhantomData, thread::sleep, time::Duration};
 
 use roplat_behavior::{
-    ArmState, Coord, JointSample, LoadState, OverrideOnce, Pose, Robot, RobotException,
-    RobotResult, SpatialSample, StateView, driver::*,
+    ArmState, JointSample, LoadState, MotionLimits, Pose, Robot, RobotException, RobotResult,
+    SpatialSample, StateView, driver::*,
 };
 
 use crate::{RobotMode, robot_impl::RobotImpl, robot_param::*, robot_state::RobotState, types::*};
@@ -15,12 +15,9 @@ pub struct HansRobot<T: HansType, const N: usize> {
     pub(crate) marker: PhantomData<T>,
     pub robot_impl: RobotImpl<N>,
     pub(crate) is_moving: bool,
-
-    pub(crate) coord: OverrideOnce<Coord>,
-    pub(crate) max_vel: OverrideOnce<[f64; N]>,
-    pub(crate) max_acc: OverrideOnce<[f64; N]>,
-    pub(crate) max_cartesian_vel: OverrideOnce<f64>,
-    pub(crate) max_cartesian_acc: OverrideOnce<f64>,
+    /// Its `scale` is the controller's speed override; moves use the
+    /// controller's own velocity and acceleration settings.
+    pub(crate) limits: MotionLimits<N>,
 }
 
 impl<T: HansType, const N: usize> HansRobot<T, N> {
@@ -36,7 +33,7 @@ impl<T: HansType, const N: usize> HansRobot<T, N> {
 
 impl<T: HansType, const N: usize> Robot for HansRobot<T, N> {
     type State = RobotState;
-    const CONTROL_PERIOD: f64 = 1e-3;
+    const CONTROL_PERIOD: Duration = Duration::from_millis(1);
 
     fn version() -> String {
         format!("HansRobot v{HANS_VERSION}")
@@ -145,93 +142,17 @@ where
         [0.; N]
     }
 
-    fn get_endpoint(&self) -> Pose {
-        Pose::default()
+    fn motion_limits(&self) -> MotionLimits<N> {
+        self.limits
     }
 
-    fn with_joint_vel(mut self, vel_bound: [f64; N]) -> Self {
-        self.max_vel.once(vel_bound);
-        self
-    }
-
-    fn with_joint_acc(mut self, acc_bound: [f64; N]) -> Self {
-        self.max_acc.once(acc_bound);
-        self
-    }
-
-    fn with_joint_jerk(self, _jerk_bound: [f64; N]) -> Self {
-        self
-    }
-
-    fn with_torque(self, _torque_bound: [f64; N]) -> Self {
-        self
-    }
-
-    fn with_torque_dot(self, _torque_dot_bound: [f64; N]) -> Self {
-        self
-    }
-
-    fn with_cartesian_vel(mut self, vel_bound: f64) -> Self {
-        self.max_cartesian_vel.once(vel_bound);
-        self
-    }
-
-    fn with_cartesian_acc(mut self, acc_bound: f64) -> Self {
-        self.max_cartesian_acc.once(acc_bound);
-        self
-    }
-
-    fn with_cartesian_jerk(self, _jerk_bound: f64) -> Self {
-        self
-    }
-
-    fn with_rotation_vel(self, _vel_bound: f64) -> Self {
-        self
-    }
-
-    fn with_rotation_acc(self, _acc_bound: f64) -> Self {
-        self
-    }
-
-    fn with_rotation_jerk(self, _jerk_bound: f64) -> Self {
-        self
-    }
-}
-
-impl<T: HansType, const N: usize> HansRobot<T, N>
-where
-    HansRobot<T, N>: Joints<N> + EndPoint,
-{
-    pub fn set_coord(&mut self, coord: Coord) -> RobotResult<()> {
-        self.coord.set(coord);
+    /// Checks `limits` against the declared envelope and sends their `scale`
+    /// to the controller as its speed override.
+    fn set_motion_limits(&mut self, limits: MotionLimits<N>) -> RobotResult<()> {
+        limits.within(&MotionLimits::envelope::<Self>())?;
+        self.robot_impl.state_set_override((0, limits.scale))?;
+        self.limits = limits;
         Ok(())
-    }
-
-    pub fn set_scale(&mut self, scale: f64) -> RobotResult<()> {
-        self.max_vel.set(Self::JOINT_VEL_BOUND.map(|v| v * scale));
-        self.max_acc.set(Self::JOINT_ACC_BOUND.map(|v| v * scale));
-        self.max_cartesian_vel
-            .set(Self::CARTESIAN_VEL_BOUND * scale);
-        self.max_cartesian_acc
-            .set(Self::CARTESIAN_ACC_BOUND * scale);
-
-        self.robot_impl.state_set_override((0, scale))?;
-        Ok(())
-    }
-
-    pub fn with_coord(&mut self, coord: Coord) -> &mut Self {
-        self.coord.once(coord);
-        self
-    }
-
-    pub fn with_scale(&mut self, scale: f64) -> &mut Self {
-        self.max_vel.once(Self::JOINT_VEL_BOUND.map(|v| v * scale));
-        self.max_acc.once(Self::JOINT_ACC_BOUND.map(|v| v * scale));
-        self.max_cartesian_vel
-            .once(Self::CARTESIAN_VEL_BOUND * scale);
-        self.max_cartesian_acc
-            .once(Self::CARTESIAN_ACC_BOUND * scale);
-        self
     }
 }
 
@@ -246,35 +167,17 @@ where
             ));
         }
         self.is_moving = true;
-        match self.coord.get() {
-            Coord::OCS => {
-                let move_config = WayPointEx {
-                    joint: target,
-                    vel: 25.,
-                    acc: 100.,
-                    radius: 5.,
-                    move_mode: 0,
-                    use_joint: true,
-                    command_id: "0".into(),
-                    ..WayPointEx::default()
-                };
-                self.robot_impl.move_way_point_ex((0, move_config))?;
-            }
-            Coord::Inertial | Coord::Relative => {
-                for (id, joint) in target.iter().enumerate().take(N) {
-                    if *joint == 0. {
-                        continue;
-                    }
-                    let dir = *joint > 0.;
-                    let move_config = RelJ { id: id as u8, dir, dis: joint.abs() };
-                    self.robot_impl.move_joint_rel((0, move_config))?;
-                    return Ok(());
-                }
-            }
-            Coord::Other(_) => {
-                println!("undefined coord, use OCS as default");
-            }
-        }
+        let move_config = WayPointEx {
+            joint: target,
+            vel: 25.,
+            acc: 100.,
+            radius: 5.,
+            move_mode: 0,
+            use_joint: true,
+            command_id: "0".into(),
+            ..WayPointEx::default()
+        };
+        self.robot_impl.move_way_point_ex((0, move_config))?;
         Ok(())
     }
 }
@@ -290,36 +193,17 @@ where
             ));
         }
         self.is_moving = true;
-        match self.coord.get() {
-            Coord::OCS => {
-                let move_config = WayPointEx {
-                    pose: target.into(),
-                    vel: 25.,
-                    acc: 100.,
-                    radius: 5.,
-                    move_mode: 1,
-                    use_joint: false,
-                    command_id: "0".into(),
-                    ..WayPointEx::default()
-                };
-                self.robot_impl.move_way_point_ex((0, move_config))?;
-            }
-            Coord::Inertial | Coord::Relative => {
-                let pose: [f64; 6] = target.into();
-                for (id, pose) in pose.iter().enumerate().take(N) {
-                    if *pose == 0. {
-                        continue;
-                    }
-                    let dir = *pose >= 0.;
-                    let move_config = RelL { id: id as u8, dir, dis: pose.abs(), coord: 0 };
-                    self.robot_impl.move_line_rel((0, move_config))?;
-                    return Ok(());
-                }
-            }
-            Coord::Other(_) => {
-                println!("undefined coord, use OCS as default");
-            }
-        }
+        let move_config = WayPointEx {
+            pose: target.into(),
+            vel: 25.,
+            acc: 100.,
+            radius: 5.,
+            move_mode: 1,
+            use_joint: false,
+            command_id: "0".into(),
+            ..WayPointEx::default()
+        };
+        self.robot_impl.move_way_point_ex((0, move_config))?;
         Ok(())
     }
 }
@@ -357,7 +241,7 @@ where
         let path_name = "my_path";
         let path_config = StartPushMovePathJ {
             path_name: path_name.into(),
-            speed: self.max_vel.get()[0] / Self::JOINT_VEL_BOUND[0],
+            speed: self.limits.scaled_joint().dq_max[0] / Self::JOINT_VEL_BOUND[0],
             radius: 2.,
         };
         self.robot_impl.start_push_move_path_j((0, path_config))?;
