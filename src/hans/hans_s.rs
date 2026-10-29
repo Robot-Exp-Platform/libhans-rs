@@ -1,7 +1,11 @@
-use roplat_behavior::{RobotResult, behavior::*};
+use roplat_behavior::{RobotResult, behavior::*, to_radians_array};
 use std::{f64::consts::FRAC_PI_2, marker::PhantomData};
 
-use crate::{HansRobot, robot::HansType, robot_impl::RobotImpl};
+use crate::{
+    HansRobot,
+    robot::{HansType, pose_from_hans},
+    robot_impl::RobotImpl,
+};
 
 pub struct _HansS30;
 impl HansType for _HansS30 {
@@ -26,31 +30,32 @@ impl HansS30 {
 }
 
 impl Joints<{ _HansS30::N }> for HansRobot<_HansS30, { _HansS30::N }> {
-    const JOINT_MIN: [f64; _HansS30::N] = [-360.; _HansS30::N];
-    const JOINT_MAX: [f64; _HansS30::N] = [360.; _HansS30::N];
-    const JOINT_VEL_BOUND: [f64; _HansS30::N] = [120., 120., 120., 180., 180., 180.];
-    const JOINT_ACC_BOUND: [f64; _HansS30::N] = [2.5; _HansS30::N];
+    const JOINT_MIN: [f64; _HansS30::N] = to_radians_array(HANS_ROBOT_MIN_JOINTS);
+    const JOINT_MAX: [f64; _HansS30::N] = to_radians_array(HANS_ROBOT_MAX_JOINTS);
+    const JOINT_VEL_BOUND: [f64; _HansS30::N] = to_radians_array(HANS_ROBOT_JOINT_VEL);
+    const JOINT_ACC_BOUND: [f64; _HansS30::N] = HANS_ROBOT_JOINT_ACC;
 }
 
 impl EndPoint for HansRobot<_HansS30, { _HansS30::N }> {
     const CARTESIAN_VEL_BOUND: f64 = 3.7;
     const CARTESIAN_ACC_BOUND: f64 = 2.0;
     const CARTESIAN_JERK_BOUND: f64 = 1e-3;
+}
 
-    /// Not tracked: [`read_endpoint`](EndPoint::read_endpoint) asks the controller.
+impl EndPointPose for HansRobot<_HansS30, { _HansS30::N }> {
+    /// Not tracked: [`read_endpoint`](EndPointPose::read_endpoint) asks the controller.
     fn get_endpoint(&self) -> Pose {
         Pose::default()
     }
 
     fn read_endpoint(&mut self) -> RobotResult<Pose> {
         let act = self.robot_impl.state_read_act_pos(0)?;
-        Ok(Pose::from_euler(
-            act.pose_o_to_ee[0..3].try_into().unwrap(),
-            act.pose_o_to_ee[3..6].try_into().unwrap(),
-        ))
+        Ok(pose_from_hans(act.pose_o_to_ee))
     }
 }
 
+// The controller's own figures: joint limits in degrees and joint speeds in
+// deg/s. The `Joints` impl above gives them in radians.
 pub const HANS_ROBOT_MIN_JOINTS: [f64; _HansS30::N] = [-360.; _HansS30::N];
 pub const HANS_ROBOT_MAX_JOINTS: [f64; _HansS30::N] = [360.; _HansS30::N];
 pub const HANS_ROBOT_MAX_LOAD: f64 = 30.0;
