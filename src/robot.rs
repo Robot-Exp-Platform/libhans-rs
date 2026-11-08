@@ -142,8 +142,15 @@ impl<T: HansType, const N: usize> Robot for HansRobot<T, N> {
         Ok(())
     }
 
+    /// The command interface has no latched emergency stop, so this sends the
+    /// group stop that [`stop`](Robot::stop) sends and then says the stop is
+    /// not latched.
     fn emergency_stop(&mut self) -> RobotResult<()> {
-        unimplemented!("hans robot does not support emergency stop")
+        self.stop()?;
+        Err(RobotException::UnprocessableInstructionError(
+            "the Hans command interface cannot latch an emergency stop; it sent a group stop"
+                .to_string(),
+        ))
     }
 
     fn clear_emergency_stop(&mut self) -> RobotResult<()> {
@@ -293,7 +300,7 @@ where
         let path_name = "my_path";
         let path_config = StartPushMovePathJ {
             path_name: path_name.into(),
-            speed: self.limits.scaled_joint().dq_max[0] / Self::JOINT_VEL_BOUND[0],
+            speed: self.limits.scaled_joint().dq_max[0] / Self::JOINT_LIMITS.dq_max[0],
             radius: 2.,
         };
         self.robot_impl.start_push_move_path_j((0, path_config))?;
