@@ -70,7 +70,7 @@ For an offline protocol exercise, enable `no_robot` in the dependency declaratio
 
 Important boundaries in 0.2.0:
 
-- `Arm::state()` is implemented; `Robot::read_state()`, `emergency_stop()`, and `clear_emergency_stop()` still call `unimplemented!()` and panic.
+- `Arm::state()` is implemented; `Robot::read_state()` and `clear_emergency_stop()` still call `unimplemented!()` and panic. `emergency_stop()` sends the same group stop as `stop()` and then returns an error, because the command interface cannot latch an emergency stop.
 - `get_joint()` and `get_endpoint()` return placeholders; use `state()` for controller queries.
 - The backend does not implement common `ControlWith`/`AsyncControlWith` servo sessions. Low-level servo commands do not provide that session contract.
 - Response parsing and some lower-level methods still use `unwrap`; not every failure becomes a returned error.

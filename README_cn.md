@@ -70,7 +70,7 @@ cargo +nightly check
 
 0.2.0 的重要边界：
 
-- `Arm::state()` 已实现；`Robot::read_state()`、`emergency_stop()`、`clear_emergency_stop()` 仍执行 `unimplemented!()` 并 panic。
+- `Arm::state()` 已实现；`Robot::read_state()`、`clear_emergency_stop()` 仍执行 `unimplemented!()` 并 panic。`emergency_stop()` 发出与 `stop()` 相同的组停止后返回错误，因为指令接口无法锁存急停。
 - `get_joint()`、`get_endpoint()` 返回占位值；查询控制器请用 `state()`。
 - 后端未实现通用的 `ControlWith`/`AsyncControlWith` servo 会话；底层 servo 指令不等于实现该会话契约。
 - 响应解析及部分底层方法仍使用 `unwrap`，并非所有失败都转换为返回错误。
