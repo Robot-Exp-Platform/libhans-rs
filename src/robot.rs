@@ -293,7 +293,7 @@ where
         let path_name = "my_path";
         let path_config = StartPushMovePathJ {
             path_name: path_name.into(),
-            speed: self.limits.scaled_joint().dq_max[0] / Self::JOINT_VEL_BOUND[0],
+            speed: self.limits.scaled_joint().dq_max[0] / Self::JOINT_LIMITS.dq_max[0],
             radius: 2.,
         };
         self.robot_impl.start_push_move_path_j((0, path_config))?;

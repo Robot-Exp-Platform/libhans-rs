@@ -30,16 +30,23 @@ impl HansS30 {
 }
 
 impl Joints<{ _HansS30::N }> for HansRobot<_HansS30, { _HansS30::N }> {
-    const JOINT_MIN: [f64; _HansS30::N] = to_radians_array(HANS_ROBOT_MIN_JOINTS);
-    const JOINT_MAX: [f64; _HansS30::N] = to_radians_array(HANS_ROBOT_MAX_JOINTS);
-    const JOINT_VEL_BOUND: [f64; _HansS30::N] = to_radians_array(HANS_ROBOT_JOINT_VEL);
-    const JOINT_ACC_BOUND: [f64; _HansS30::N] = HANS_ROBOT_JOINT_ACC;
+    const JOINT_LIMITS: JointLimits<{ _HansS30::N }> = JointLimits {
+        dq_max: to_radians_array(HANS_ROBOT_JOINT_VEL),
+        ddq_max: HANS_ROBOT_JOINT_ACC,
+        ..JointLimits::positions(
+            to_radians_array(HANS_ROBOT_MIN_JOINTS),
+            to_radians_array(HANS_ROBOT_MAX_JOINTS),
+        )
+    };
 }
 
 impl EndPoint for HansRobot<_HansS30, { _HansS30::N }> {
-    const CARTESIAN_VEL_BOUND: f64 = 3.7;
-    const CARTESIAN_ACC_BOUND: f64 = 2.0;
-    const CARTESIAN_JERK_BOUND: f64 = 1e-3;
+    const CARTESIAN_LIMITS: CartesianLimits = CartesianLimits {
+        linear_velocity_max: 3.7,
+        linear_acceleration_max: 2.0,
+        linear_jerk_max: 1e-3,
+        ..CartesianLimits::UNBOUNDED
+    };
 }
 
 impl EndPointPose for HansRobot<_HansS30, { _HansS30::N }> {
